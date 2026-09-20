@@ -1,9 +1,30 @@
 name: Snapshot diario
 
-# El mercado de Biwenger rota de madrugada. 02:15 hora peninsular.
+# Seis pases al día. Los horarios van en UTC; entre paréntesis, la hora
+# peninsular de verano.
+#
+# Dos avisos sobre los crons de GitHub:
+#   - Se retrasan, y a veces se saltan, cuando la hora en punto está
+#     congestionada. Por eso el minuto es 47 y no 00 ni 15.
+#   - En el plan gratuito no hay garantía de puntualidad. Varios pases al día
+#     son también un seguro: si uno se pierde, el siguiente lo cubre.
+#
+# LA HORA CLAVE son las 05:00 UTC (07:00 peninsular en verano): es cuando se
+# resuelven las subastas y se ejecutan los traspasos. No es una suposición: sale
+# del campo `until` del mercado real, que cae clavado en esa hora en punto.
+# Todo lo demás se ordena alrededor de ese momento.
 on:
   schedule:
-    - cron: '15 0 * * *'
+    - cron: '0 23 * * *'      # 01:00 · primera hora
+    - cron: '35 1 * * *'      # 03:35 · madrugada
+    - cron: '35 4 * * *'      # 06:35 · antes del cierre de subastas
+    - cron: '35 5 * * *'      # 07:35 · TRAS los traspasos: mercado y plantilla nuevos
+    - cron: '35 6 * * *'      # 08:35 · segunda pasada tras los traspasos
+    - cron: '35 7 * * *'      # 09:35 · media mañana
+    - cron: '47 9 * * *'      # 11:47 · mediodía
+    - cron: '47 17 * * *'     # 19:47 · tarde
+    - cron: '47 20 * * *'     # 22:47 · noche
+    - cron: '57 21 * * *'     # 23:57 · tras las jornadas
   workflow_dispatch:
 
 permissions:
@@ -91,16 +112,34 @@ jobs:
         continue-on-error: true
 
       - name: Consolidar y publicar
+        env:
+          # La base de datos solo se guarda en el pase de después de los traspasos,
+          # que es el estado canónico del día.
+          #
+          # Es un fichero binario: Git no puede guardar diferencias, así que
+          # cada commit almacena una copia entera. Con seis pases diarios el
+          # repositorio se hincharía a ojos vista. Y no se pierde nada, porque
+          # las filas van por fecha y los pases del mismo día reescriben las
+          # mismas: los precios de Biwenger solo cambian de madrugada.
+          GUARDAR_DB: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '35 5 * * *' }}
         run: |
           mkdir -p data
           encontrados=0
           if [ -d ./descargas ]; then
-            for f in $(find ./descargas -type f \( -name '*.json' -o -name '*.db' \)); do
+            for f in $(find ./descargas -type f -name '*.json'); do
               cp "$f" data/
               encontrados=$((encontrados+1))
             done
+            if [ "$GUARDAR_DB" = "true" ]; then
+              for f in $(find ./descargas -type f -name '*.db'); do
+                cp "$f" data/
+              done
+              echo "Pase posterior a los traspasos: se guarda el histórico."
+            else
+              echo "Pase intermedio: solo los JSON, sin tocar el histórico."
+            fi
           fi
-          echo "$encontrados fichero(s) recogidos"
+          echo "$encontrados fichero(s) de datos recogidos"
 
           if [ "$encontrados" -eq 0 ]; then
             echo "Ningún manager produjo datos. Mira los errores de los jobs de arriba."
@@ -109,10 +148,13 @@ jobs:
 
           git config user.name "snapshot-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add -f data/market-*.json data/*.db 2>/dev/null || true
+          git add -f data/market-*.json 2>/dev/null || true
+          if [ "$GUARDAR_DB" = "true" ]; then
+            git add -f data/*.db 2>/dev/null || true
+          fi
           if git diff --staged --quiet; then
-            echo "Sin cambios que publicar."
+            echo "Sin cambios que publicar: el mercado no se ha movido."
           else
-            git commit -m "snapshot $(date +%F)"
+            git commit -m "snapshot $(date -u +'%F %H:%M') UTC"
             git push
           fi

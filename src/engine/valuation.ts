@@ -69,11 +69,80 @@ export interface Revalorizacion {
   esperada: number;
   /** Como fracción de su precio actual. Es lo que importa en los baratos. */
   porcentaje: number;
+  /** Señales del histórico real, si las hay. */
+  tendencia?: Tendencia;
+}
+
+/** Días que dura el horizonte de seis jornadas, aproximadamente. */
+const DIAS_HORIZONTE = 42;
+
+/**
+ * Señales sacadas del histórico real de precios, que son doce meses día a día.
+ *
+ * Hasta ahora la revalorización se estimaba solo con una regresión de toda la
+ * liga (precio contra rendimiento). Era lo único disponible antes de tener el
+ * histórico, pero es una herramienta muy pobre al lado de ver la trayectoria
+ * concreta de ESE jugador: cuánto lleva subiendo, a qué ritmo, y en qué parte
+ * de su recorrido anual está.
+ */
+export interface Tendencia {
+  /** Euros por día, media de la última semana. */
+  ritmo7: number;
+  /** Euros por día, media del último mes. */
+  ritmo30: number;
+  /**
+   * ¿Va más rápido que antes, EN SU MISMA DIRECCIÓN? Comparar los números a
+   * secas daba falsos positivos en las bajadas, porque -15 es mayor que -18 y
+   * una caída que se frena salía marcada como aceleración.
+   */
+  acelera: boolean;
+  /** Dónde está hoy dentro de su rango de doce meses, de 0 a 1. */
+  posicionEnRango: number;
+  minAnual: number;
+  maxAnual: number;
+  /** Días de histórico disponibles. */
+  dias: number;
+}
+
+export function tendencia(historico?: Array<[number, number]>): Tendencia | null {
+  if (!Array.isArray(historico) || historico.length < 8) return null;
+
+  const serie = [...historico].sort((a, b) => a[0] - b[0]);
+  const ultimo = serie[serie.length - 1]!;
+  const precios = serie.map((d) => d[1]);
+  const minAnual = Math.min(...precios);
+  const maxAnual = Math.max(...precios);
+
+  const haceDias = (n: number) => {
+    const objetivo = ultimo[0] - n * 86_400_000;
+    let mejor = serie[0]!;
+    for (const d of serie) if (d[0] <= objetivo) mejor = d;
+    return mejor;
+  };
+
+  const p7 = haceDias(7), p30 = haceDias(30);
+  const dias7 = Math.max(1, (ultimo[0] - p7[0]) / 86_400_000);
+  const dias30 = Math.max(1, (ultimo[0] - p30[0]) / 86_400_000);
+
+  const ritmo7 = (ultimo[1] - p7[1]) / dias7;
+  const ritmo30 = (ultimo[1] - p30[1]) / dias30;
+
+  const rango = maxAnual - minAnual;
+  return {
+    ritmo7,
+    ritmo30,
+    acelera:
+      Math.sign(ritmo7) === Math.sign(ritmo30) &&
+      Math.abs(ritmo7) > Math.abs(ritmo30) * 1.2,
+    posicionEnRango: rango > 0 ? (ultimo[1] - minAnual) / rango : 0.5,
+    minAnual,
+    maxAnual,
+    dias: Math.round((ultimo[0] - serie[0]![0]) / 86_400_000),
+  };
 }
 
 /**
- * Cuánto se espera que se mueva su precio.
- *
+ * Cuánto se espera que se mueva su precio. *
  * La convergencia se calcula en escala logarítmica, no en euros. Biwenger mueve
  * los precios en PORCENTAJE del valor actual, así que un jugador de 500.000 €
  * puede doblar en unas semanas mientras uno de 25 millones se mueve un 5%. Con
@@ -87,6 +156,7 @@ export function revalorizacion(
   player: Player,
   proj: PlayerProjection,
   recta: RectaPrecio,
+  tend?: Tendencia | null,
   /**
    * Fracción del desfase logarítmico que se corrige en el horizonte.
    *
@@ -120,12 +190,43 @@ export function revalorizacion(
   const ratio = Math.exp(desfase * velocidad * factorMinutos);
   let esperada = player.price * (ratio - 1);
 
-  // El impulso reciente confirma o desmiente la dirección.
-  esperada += player.priceDelta * 3;
+  /**
+   * El histórico real manda sobre la estimación teórica.
+   *
+   * La recta de la liga dice hacia dónde DEBERÍA ir el precio; la trayectoria
+   * del jugador dice hacia dónde está yendo de verdad y a qué ritmo. Cuando
+   * hay histórico, pesa más: es un dato suyo, no una media de quinientos.
+   */
+  if (tend) {
+    // Proyección directa del ritmo observado, dando más peso a la semana.
+    const porDia = tend.ritmo7 * 0.6 + tend.ritmo30 * 0.4;
+    const observada = porDia * DIAS_HORIZONTE;
+
+    // Mezcla: dos tercios lo que hace, un tercio lo que debería hacer.
+    esperada = observada * 0.65 + esperada * 0.35;
+
+    // Acelerando, un empujón. Es la señal de que el mercado acaba de
+    // darse cuenta de algo.
+    if (tend.acelera && porDia > 0) esperada *= 1.15;
+
+    // Y freno en los extremos del año: quien está en su máximo anual tiene
+    // menos recorrido, y quien está en el mínimo ya ha caído lo que tenía
+    // que caer.
+    if (tend.posicionEnRango > 0.9 && esperada > 0) esperada *= 0.6;
+    if (tend.posicionEnRango < 0.1 && esperada < 0) esperada *= 0.6;
+  } else {
+    // Sin histórico, lo único que hay es el movimiento del último día.
+    esperada += player.priceDelta * 3;
+  }
+
+  // Tope de cordura: nadie multiplica ni divide por más de 2,5 en el horizonte.
+  const tope = player.price * 1.5;
+  esperada = Math.max(-player.price * 0.6, Math.min(tope, esperada));
 
   return {
     precioJusto: Math.round(justo),
     esperada: Math.round(esperada),
     porcentaje: Math.round((esperada / player.price) * 1000) / 10,
+    tendencia: tend ?? undefined,
   };
 }

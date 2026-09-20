@@ -1,12 +1,17 @@
 import type { LeagueState, Player, Position, Recommendation } from '../domain/types.js';
+import { POSITIONS } from '../domain/types.js';
 import type { PlayerProjection } from './projection.js';
 import { bestXI, toCandidates, shadowPrice, type Candidate } from './lambda.js';
 import { replacementLevel } from './replacement.js';
 import { calcularEconomia, type Economia, type ModoPuja } from './economy.js';
-import { ajustarPrecios, revalorizacion, type Revalorizacion } from './valuation.js';
+import { ajustarPrecios, revalorizacion, tendencia, type Revalorizacion } from './valuation.js';
 
 export interface EngineOutput {
   lambda: number;
+  /** Dinero que cabe colocar hoy en fichajes que merecen la pena. */
+  capacidadMercado: number;
+  /** Lo mismo, descontando el saldo que ya tienes. */
+  capacidadLibre: number;
   /** Fichajes que mejoran tu once Y te dejan dinero: prioridad absoluta. */
   freeUpgrades: Array<{ inId: number; outId: number; gain: number; ingreso: number }>;
   replacement: Record<Position, number>;
@@ -78,10 +83,45 @@ export function evaluate(
     ? volatilidades[Math.floor(volatilidades.length * 0.75)]!
     : 4;
 
-  const mySquad: Candidate[] = toCandidates(
+  const mySquadReal: Candidate[] = toCandidates(
     state.me.squad.map((s) => byId.get(s.playerId)).filter((p): p is Player => !!p),
     projections,
   );
+
+  /**
+   * Plantilla rellenada hasta poder formar un once legal, con jugadores
+   * fantasma al nivel de reemplazo.
+   *
+   * Sin esto, una plantilla incompleta falsea TODO el sistema: al medir cuánto
+   * mejora el once un fichaje, el hueco vacío hace que aporte sus puntos
+   * enteros en vez de la diferencia con quien desplaza. Lambda se dispara, y
+   * con lambda alto cualquier jugador caro parece vendible.
+   *
+   * El relleno representa lo que siempre puedes conseguir: un agente libre del
+   * montón. Así el fichaje se compara contra una alternativa realista y no
+   * contra la nada.
+   */
+  const MINIMOS: Record<Position, number> = { GK: 1, DF: 5, MF: 5, FW: 3 };
+  const mySquad: Candidate[] = [...mySquadReal];
+  let fantasmas = 0;
+  for (const pos of POSITIONS) {
+    const tengo = mySquadReal.filter((c) => c.position === pos).length;
+    for (let i = tengo; i < MINIMOS[pos]; i++) {
+      mySquad.push({
+        playerId: -(fantasmas + 1),
+        position: pos,
+        price: 0,
+        projectedPoints: replacement[pos],
+      });
+      fantasmas++;
+    }
+  }
+  if (fantasmas > 0) {
+    console.log(
+      `[plantilla] incompleta: ${fantasmas} hueco(s) rellenados al nivel de ` +
+        `reemplazo para no falsear el precio del dinero`,
+    );
+  }
 
   const marketPool: Candidate[] = state.market
     .map((m) => {
@@ -97,7 +137,16 @@ export function evaluate(
     })
     .filter((c): c is Candidate => c !== null);
 
-  const { lambda, gratis } = shadowPrice(mySquad, marketPool, state.me.balance);
+  const { lambda, gratis, capacidadTotal } = shadowPrice(mySquad, marketPool, state.me.balance);
+
+  /**
+   * Dinero que una venta podría colocar de verdad.
+   *
+   * Si con el saldo que ya tienes te llega para comprar todo lo que merece la
+   * pena hoy, vender no aporta nada: el dinero extra se queda parado. Por eso
+   * se descuenta el saldo de la capacidad del mercado.
+   */
+  const capacidadLibre = Math.max(0, capacidadTotal - state.me.balance);
   const rectas = ajustarPrecios(state.players, projections);
   const baseXI = bestXI(mySquad);
   const inLineup = new Set(baseXI.lineup.map((c) => c.playerId));
@@ -161,7 +210,7 @@ export function evaluate(
     // en seis jornadas vale 1,5M, has ganado un millón. Por eso suma al techo.
     // Un titular barato puede no aportar apenas puntos y ser aun así una buena
     // operación por esto.
-    const reval = revalorizacion(player, proj, rectas[player.position]);
+    const reval = revalorizacion(player, proj, rectas[player.position], tendencia(player.priceHistory));
     const maxBid = Math.max(0, valorPuntos + Math.max(0, reval.esperada));
 
     // Quien no va a jugar no es un fichaje, por barato que esté.
@@ -244,7 +293,7 @@ export function evaluate(
   // jugador vale PARA TI, que es su diferencia con quien jugaría en su lugar.
   const sells: Recommendation[] = [];
 
-  for (const owned of mySquad) {
+  for (const owned of mySquadReal) {
     const player = byId.get(owned.playerId);
     const proj = projections.get(owned.playerId);
     if (!player || !proj) continue;
@@ -255,13 +304,25 @@ export function evaluate(
     const sinEl = bestXI(mySquad.filter((c) => c.playerId !== owned.playerId));
     const aporte = baseXI.points - sinEl.points;
 
-    const revalVenta = revalorizacion(player, proj, rectas[player.position]);
+    const revalVenta = revalorizacion(player, proj, rectas[player.position], tendencia(player.priceHistory));
     // Si va a subir, ese dinero futuro también es valor: no lo vendas justo antes.
     const valueToMe =
       (aporte / lambda) * 1_000_000 + Math.max(0, revalVenta.esperada);
+
+    // De lo que te dan por él, solo cuenta lo que puedes recolocar hoy.
+    const reinvertible = Math.min(player.price, capacidadLibre);
+    const puntosQueGanas = (reinvertible / 1_000_000) * lambda;
+    const puntosQuePierdes = aporte + Math.max(0, revalVenta.esperada) / 1_000_000 * lambda;
+
     const surplus = player.price - valueToMe;
 
     const reasons: string[] = [];
+    if (capacidadLibre < player.price * 0.5) {
+      reasons.push(
+        `Aunque lo vendas, hoy solo hay ${(capacidadLibre / 1e6).toFixed(1)}M€ de fichajes que ` +
+          `merezcan la pena: el resto del dinero se quedaría parado`,
+      );
+    }
     if (aporte <= 0.05) {
       reasons.push('Sin él tu mejor once no baja: no aporta nada al equipo que pones');
     } else if (!inLineup.has(owned.playerId)) {
@@ -294,7 +355,14 @@ export function evaluate(
       quality: calidadDe(player.id),
       appreciation: revalVenta,
       reasons,
-      action: surplus > player.price * SELL_MARGIN ? 'sell' : 'hold',
+      // Vender solo compensa si los puntos que compras con ese dinero superan
+      // a los que pierdes, con margen. Y el dinero que no puedes recolocar no
+      // compra nada.
+      action:
+        puntosQueGanas > puntosQuePierdes * (1 + SELL_MARGIN) &&
+        surplus > player.price * SELL_MARGIN
+          ? 'sell'
+          : 'hold',
     });
   }
 
@@ -304,7 +372,7 @@ export function evaluate(
   // sistema te decía que vendieras casi la plantilla entera, incluidos los
   // únicos jugadores de su posición, que es un consejo que no puedes seguir.
   const squadCountByPos: Record<string, number> = { GK: 0, DF: 0, MF: 0, FW: 0 };
-  for (const c of mySquad) squadCountByPos[c.position]!++;
+  for (const c of mySquadReal) squadCountByPos[c.position]!++;
 
   const eligible = sells.filter((r) => {
     if (r.action !== 'sell') return false;
@@ -328,7 +396,12 @@ export function evaluate(
   buys.sort((a, b) => b.score - a.score);
   sells.sort((a, b) => b.score - a.score);
 
-  return { lambda, replacement, economia, freeUpgrades: gratis, buys, sells };
+  return {
+    lambda, replacement, economia, freeUpgrades: gratis,
+    capacidadMercado: Math.round(capacidadTotal),
+    capacidadLibre: Math.round(capacidadLibre),
+    buys, sells,
+  };
 }
 
 /**

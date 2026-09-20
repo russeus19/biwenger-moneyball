@@ -132,7 +132,7 @@ export function shadowPrice(
   squad: Candidate[],
   marketPool: Candidate[],
   budget: number,
-): { lambda: number; gratis: MejoraGratis[] } {
+): { lambda: number; gratis: MejoraGratis[]; capacidadTotal: number } {
   const base = bestXI(squad);
   const realistic = marketPool.map((c) => ({ ...c, price: c.price * AUCTION_PREMIUM }));
 
@@ -163,6 +163,20 @@ export function shadowPrice(
   }
   const gratisUnicas = [...mejorPorFichaje.values()].sort((a, b) => b.gain - a.gain);
 
+  /**
+   * Cuánto dinero cabe colocar HOY en fichajes que merezcan la pena.
+   *
+   * Es el límite que faltaba. El dinero solo vale lo que valen las cosas que
+   * puedes comprar con él, y el mercado de un día tiene las que tiene: si hay
+   * diez millones en fichajes que mejoran tu once, vender por catorce deja
+   * cuatro muertos en la caja sin dar un solo punto.
+   *
+   * Sin esta cifra, el modelo valoraba cada euro de una venta al mismo ritmo
+   * que el primero y acababa recomendando vender a cualquier jugador caro, por
+   * bueno que fuese.
+   */
+  const capacidadTotal = opciones.reduce((s, o) => s + o.coste, 0);
+
   if (opciones.length > 0) {
     opciones.sort((a, b) => b.efficiency - a.efficiency);
     let gastado = 0;
@@ -174,14 +188,20 @@ export function shadowPrice(
       gastado += o.coste;
       ganado += o.gain;
     }
-    if (gastado > 0) return { lambda: ganado / (gastado / 1_000_000), gratis: gratisUnicas };
-    return { lambda: opciones[0]!.efficiency, gratis: gratisUnicas };
+    if (gastado > 0) {
+      return { lambda: ganado / (gastado / 1_000_000), gratis: gratisUnicas, capacidadTotal };
+    }
+    return { lambda: opciones[0]!.efficiency, gratis: gratisUnicas, capacidadTotal };
   }
 
   const efficiencies = marketPool
     .filter((c) => c.price > 0 && c.projectedPoints > 0)
     .map((c) => c.projectedPoints / (c.price / 1_000_000))
     .sort((a, b) => a - b);
-  if (efficiencies.length === 0) return { lambda: 1, gratis: gratisUnicas };
-  return { lambda: efficiencies[Math.floor(efficiencies.length / 2)]!, gratis: gratisUnicas };
+  if (efficiencies.length === 0) return { lambda: 1, gratis: gratisUnicas, capacidadTotal: 0 };
+  return {
+    lambda: efficiencies[Math.floor(efficiencies.length / 2)]!,
+    gratis: gratisUnicas,
+    capacidadTotal,
+  };
 }

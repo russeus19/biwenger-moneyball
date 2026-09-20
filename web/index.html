@@ -45,6 +45,10 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font
 .sim{display:inline-block;font-size:.62rem;text-transform:uppercase;letter-spacing:.07em;
   background:var(--mid-bg);color:var(--mid);padding:2px 7px;border-radius:999px;font-weight:700;margin-left:6px;vertical-align:2px}
 .meta{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:.75rem;color:var(--muted)}
+.frescura{display:block;font-size:.72rem;margin-top:8px;padding:7px 10px;border-radius:9px;line-height:1.4}
+.f-ok{background:var(--good-bg);color:var(--good)}
+.f-viejo{background:var(--mid-bg);color:var(--mid)}
+.f-rancio{background:var(--bad-bg);color:var(--bad)}
 .meta b{color:var(--ink);font-variant-numeric:tabular-nums}
 
 /* tabs */
@@ -256,6 +260,11 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font
 .cmp-no{color:var(--bad);font-weight:700}
 .dual{display:flex;gap:7px;margin-bottom:11px}
 .dual div{flex:1;background:var(--bg);border-radius:9px;padding:9px 6px;text-align:center}
+.dual small{display:block;font-size:.55rem;color:var(--faint);margin-top:3px;line-height:1.3}
+.plus{display:flex;align-items:baseline;gap:5px;font-variant-numeric:tabular-nums}
+.plus .g{color:var(--good);font-weight:700}
+.plus .r{color:var(--bad);font-weight:700}
+.tend{font-size:.68rem;color:var(--muted);margin-top:5px;line-height:1.4}
 .dual b{display:block;font-size:1.15rem;font-variant-numeric:tabular-nums;letter-spacing:-.03em}
 .dual span{font-size:.57rem;color:var(--faint);text-transform:uppercase;letter-spacing:.04em;font-weight:700}
 .resumen{background:var(--good-bg);color:var(--good);border-radius:11px;padding:11px 12px;
@@ -292,6 +301,7 @@ footer{margin-top:22px;font-size:.7rem;color:var(--faint);line-height:1.5;paddin
       <span>λ <b id="m-lambda">—</b> pts/M€</span>
       <span>J<b id="m-round">—</b></span>
     </div>
+    <div id="frescura"></div>
   </div>
 
   <div class="tabs" role="tablist">
@@ -373,11 +383,13 @@ function usuarioActual(){
 const DATA_URL = './market-' + usuarioActual() + '.json';
 
 const EMBEDDED = {
-  "generatedAt": "2026-09-20T00:11:42.581Z",
+  "generatedAt": "2026-09-20T01:07:41.368Z",
   "date": "2026-09-20",
   "round": 8,
   "simulated": true,
   "lambda": 2.978,
+  "capacidadMercado": 47122162,
+  "capacidadLibre": 34622162,
   "freeUpgrades": [
     {
       "entra": "Zabiri",
@@ -608,6 +620,8 @@ const EMBEDDED = {
         "porcentaje": 39.2
       },
       "valorPuntos": 6399912,
+      "pagado": null,
+      "plusvalia": null,
       "action": "buy",
       "askingPrice": 5182327,
       "maxBid": 8330333,
@@ -779,6 +793,8 @@ const EMBEDDED = {
         "porcentaje": 46
       },
       "valorPuntos": 4374061,
+      "pagado": null,
+      "plusvalia": null,
       "action": "buy",
       "askingPrice": 4186345,
       "maxBid": 6095378,
@@ -950,6 +966,8 @@ const EMBEDDED = {
         "porcentaje": 0.7
       },
       "valorPuntos": 0,
+      "pagado": null,
+      "plusvalia": null,
       "action": "avoid",
       "askingPrice": 6570000,
       "maxBid": 46928,
@@ -1099,6 +1117,8 @@ const EMBEDDED = {
         "porcentaje": 5
       },
       "valorPuntos": 614214,
+      "pagado": null,
+      "plusvalia": null,
       "action": "avoid",
       "askingPrice": 7590000,
       "maxBid": 990542,
@@ -1269,6 +1289,8 @@ const EMBEDDED = {
         "porcentaje": 2
       },
       "valorPuntos": 0,
+      "pagado": null,
+      "plusvalia": null,
       "action": "avoid",
       "askingPrice": 5880000,
       "maxBid": 119186,
@@ -1438,6 +1460,8 @@ const EMBEDDED = {
         "porcentaje": 3.7
       },
       "valorPuntos": 0,
+      "pagado": null,
+      "plusvalia": null,
       "action": "avoid",
       "askingPrice": 4860000,
       "maxBid": 182078,
@@ -1607,6 +1631,8 @@ const EMBEDDED = {
         "porcentaje": -17.7
       },
       "valorPuntos": 11318413,
+      "pagado": null,
+      "plusvalia": null,
       "action": "avoid",
       "askingPrice": 24017121,
       "maxBid": 11318413,
@@ -1779,6 +1805,8 @@ const EMBEDDED = {
         "porcentaje": 0.6
       },
       "valorPuntos": 0,
+      "pagado": null,
+      "plusvalia": null,
       "action": "avoid",
       "askingPrice": 7420000,
       "maxBid": 44993,
@@ -1928,6 +1956,8 @@ const EMBEDDED = {
         "porcentaje": 1.6
       },
       "valorPuntos": 0,
+      "pagado": null,
+      "plusvalia": null,
       "action": "avoid",
       "askingPrice": 5030000,
       "maxBid": 82169,
@@ -2097,6 +2127,8 @@ const EMBEDDED = {
         "porcentaje": -0.9
       },
       "valorPuntos": 0,
+      "pagado": null,
+      "plusvalia": null,
       "action": "avoid",
       "askingPrice": 7250000,
       "maxBid": 0,
@@ -2266,6 +2298,8 @@ const EMBEDDED = {
         "porcentaje": -9.1
       },
       "valorPuntos": 0,
+      "pagado": null,
+      "plusvalia": null,
       "action": "avoid",
       "askingPrice": 2660000,
       "maxBid": 0,
@@ -2435,6 +2469,8 @@ const EMBEDDED = {
         "porcentaje": -1.5
       },
       "valorPuntos": 0,
+      "pagado": null,
+      "plusvalia": null,
       "action": "avoid",
       "askingPrice": 7070000,
       "maxBid": 0,
@@ -2604,6 +2640,8 @@ const EMBEDDED = {
         "porcentaje": -0.3
       },
       "valorPuntos": 0,
+      "pagado": null,
+      "plusvalia": null,
       "action": "avoid",
       "askingPrice": 7070000,
       "maxBid": 0,
@@ -2773,6 +2811,8 @@ const EMBEDDED = {
         "porcentaje": -6
       },
       "valorPuntos": 0,
+      "pagado": null,
+      "plusvalia": null,
       "action": "avoid",
       "askingPrice": 4010000,
       "maxBid": 0,
@@ -2942,6 +2982,8 @@ const EMBEDDED = {
         "porcentaje": -3
       },
       "valorPuntos": 0,
+      "pagado": null,
+      "plusvalia": null,
       "action": "avoid",
       "askingPrice": 5030000,
       "maxBid": 0,
@@ -3112,6 +3154,8 @@ const EMBEDDED = {
         "esperada": 7843,
         "porcentaje": 0.5
       },
+      "pagado": 1953600,
+      "plusvalia": -473600,
       "action": "sell",
       "valueToMe": 7843,
       "inXI": false,
@@ -3123,20 +3167,20 @@ const EMBEDDED = {
       "precioReal": false
     },
     {
-      "id": 9063,
-      "name": "Raúl García",
+      "id": 9064,
+      "name": "Moriba",
       "position": "MF",
-      "team": "Osasuna",
-      "teamId": 6,
-      "price": 6060000,
+      "team": "Celta",
+      "teamId": 14,
+      "price": 5550000,
       "priceDelta": 0,
       "status": "ok",
-      "seasonPoints": 18,
+      "seasonPoints": 15,
       "matches": 6,
-      "projectedPoints": 26.5,
+      "projectedPoints": 25.5,
       "startProbability": 1,
-      "per90": 4.41,
-      "volatility": 0.6,
+      "per90": 4.26,
+      "volatility": 2.3,
       "rounds": [
         {
           "r": 1,
@@ -3160,7 +3204,7 @@ const EMBEDDED = {
         },
         {
           "r": 2,
-          "p": 3,
+          "p": 0,
           "m": 90,
           "h": null,
           "o": null,
@@ -3180,7 +3224,7 @@ const EMBEDDED = {
         },
         {
           "r": 3,
-          "p": 4,
+          "p": 0,
           "m": 90,
           "h": null,
           "o": null,
@@ -3200,7 +3244,7 @@ const EMBEDDED = {
         },
         {
           "r": 4,
-          "p": 3,
+          "p": 4,
           "m": 90,
           "h": null,
           "o": null,
@@ -3220,7 +3264,7 @@ const EMBEDDED = {
         },
         {
           "r": 5,
-          "p": 3,
+          "p": 2,
           "m": 90,
           "h": null,
           "o": null,
@@ -3240,7 +3284,7 @@ const EMBEDDED = {
         },
         {
           "r": 6,
-          "p": 2,
+          "p": 6,
           "m": 90,
           "h": null,
           "o": null,
@@ -3269,17 +3313,20 @@ const EMBEDDED = {
       "escudo": null,
       "priceHistory": null,
       "score": 7.5,
-      "quality": 0.6,
+      "quality": 0,
       "reval": {
-        "precioJusto": 6149779,
-        "esperada": 40236,
-        "porcentaje": 0.7
+        "precioJusto": 5879770,
+        "esperada": 145958,
+        "porcentaje": 2.6
       },
+      "pagado": 5328000,
+      "plusvalia": 222000,
       "action": "hold",
-      "valueToMe": 4178324,
+      "valueToMe": 145958,
       "inXI": true,
       "reasons": [
-        "El mercado paga 1.9M€ por encima de su valor para ti"
+        "Sin él tu mejor once no baja: no aporta nada al equipo que pones",
+        "El mercado paga 5.4M€ por encima de su valor para ti"
       ],
       "precioReal": false
     },
@@ -3436,6 +3483,8 @@ const EMBEDDED = {
         "esperada": -132037,
         "porcentaje": -1.8
       },
+      "pagado": 4344000,
+      "plusvalia": 2896000,
       "action": "sell",
       "valueToMe": 0,
       "inXI": false,
@@ -3598,6 +3647,8 @@ const EMBEDDED = {
         "esperada": -46921,
         "porcentaje": -1
       },
+      "pagado": 3813600,
+      "plusvalia": 726400,
       "action": "sell",
       "valueToMe": 198425,
       "inXI": true,
@@ -3759,6 +3810,8 @@ const EMBEDDED = {
         "esperada": 25702,
         "porcentaje": 0.3
       },
+      "pagado": 4758000,
+      "plusvalia": 3172000,
       "action": "hold",
       "valueToMe": 496994,
       "inXI": true,
@@ -3920,6 +3973,8 @@ const EMBEDDED = {
         "esperada": 17714,
         "porcentaje": 0.2
       },
+      "pagado": 5464800,
+      "plusvalia": 2125200,
       "action": "hold",
       "valueToMe": 17714,
       "inXI": false,
@@ -4082,6 +4137,8 @@ const EMBEDDED = {
         "esperada": 289478,
         "porcentaje": 7.5
       },
+      "pagado": 3705600,
+      "plusvalia": 154400,
       "action": "hold",
       "valueToMe": 623686,
       "inXI": true,
@@ -4243,6 +4300,8 @@ const EMBEDDED = {
         "esperada": 187722,
         "porcentaje": 4.9
       },
+      "pagado": 4168800,
+      "plusvalia": -308800,
       "action": "hold",
       "valueToMe": 187722,
       "inXI": false,
@@ -4385,6 +4444,8 @@ const EMBEDDED = {
         "esperada": 462237,
         "porcentaje": 12.5
       },
+      "pagado": 4428000,
+      "plusvalia": -738000,
       "action": "hold",
       "valueToMe": 1171380,
       "inXI": true,
@@ -4547,11 +4608,13 @@ const EMBEDDED = {
         "esperada": 73275,
         "porcentaje": 0.9
       },
+      "pagado": 4758000,
+      "plusvalia": 3172000,
       "action": "hold",
-      "valueToMe": 6495500,
+      "valueToMe": 2674666,
       "inXI": true,
       "reasons": [
-        "El mercado paga 1.4M€ por encima de su valor para ti"
+        "El mercado paga 5.3M€ por encima de su valor para ti"
       ],
       "precioReal": false
     },
@@ -4708,29 +4771,31 @@ const EMBEDDED = {
         "esperada": 151643,
         "porcentaje": 2.1
       },
+      "pagado": 5097600,
+      "plusvalia": 1982400,
       "action": "hold",
-      "valueToMe": 5784015,
+      "valueToMe": 1963181,
       "inXI": true,
       "reasons": [
-        "El mercado paga 1.3M€ por encima de su valor para ti"
+        "El mercado paga 5.1M€ por encima de su valor para ti"
       ],
       "precioReal": false
     },
     {
-      "id": 9064,
-      "name": "Moriba",
+      "id": 9063,
+      "name": "Raúl García",
       "position": "MF",
-      "team": "Celta",
-      "teamId": 14,
-      "price": 5550000,
+      "team": "Osasuna",
+      "teamId": 6,
+      "price": 6060000,
       "priceDelta": 0,
       "status": "ok",
-      "seasonPoints": 15,
+      "seasonPoints": 18,
       "matches": 6,
-      "projectedPoints": 25.5,
+      "projectedPoints": 26.5,
       "startProbability": 1,
-      "per90": 4.26,
-      "volatility": 2.3,
+      "per90": 4.41,
+      "volatility": 0.6,
       "rounds": [
         {
           "r": 1,
@@ -4754,7 +4819,7 @@ const EMBEDDED = {
         },
         {
           "r": 2,
-          "p": 0,
+          "p": 3,
           "m": 90,
           "h": null,
           "o": null,
@@ -4774,26 +4839,6 @@ const EMBEDDED = {
         },
         {
           "r": 3,
-          "p": 0,
-          "m": 90,
-          "h": null,
-          "o": null,
-          "g": 0,
-          "a": 0,
-          "hl": null,
-          "vl": null,
-          "hid": null,
-          "vid": null,
-          "hg": null,
-          "vg": null,
-          "y": 0,
-          "rd": false,
-          "og": 0,
-          "ps": 0,
-          "pm": 0
-        },
-        {
-          "r": 4,
           "p": 4,
           "m": 90,
           "h": null,
@@ -4813,8 +4858,28 @@ const EMBEDDED = {
           "pm": 0
         },
         {
+          "r": 4,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
           "r": 5,
-          "p": 2,
+          "p": 3,
           "m": 90,
           "h": null,
           "o": null,
@@ -4834,7 +4899,7 @@ const EMBEDDED = {
         },
         {
           "r": 6,
-          "p": 6,
+          "p": 2,
           "m": 90,
           "h": null,
           "o": null,
@@ -4863,17 +4928,19 @@ const EMBEDDED = {
       "escudo": null,
       "priceHistory": null,
       "score": 5,
-      "quality": 0,
+      "quality": 0.6,
       "reval": {
-        "precioJusto": 5879770,
-        "esperada": 145958,
-        "porcentaje": 2.6
+        "precioJusto": 6149779,
+        "esperada": 40236,
+        "porcentaje": 0.7
       },
+      "pagado": 5090400,
+      "plusvalia": 969600,
       "action": "hold",
-      "valueToMe": 3966792,
+      "valueToMe": 357490,
       "inXI": true,
       "reasons": [
-        "El mercado paga 1.6M€ por encima de su valor para ti"
+        "El mercado paga 5.7M€ por encima de su valor para ti"
       ],
       "precioReal": false
     },
@@ -5030,6 +5097,8 @@ const EMBEDDED = {
         "esperada": -240959,
         "porcentaje": -2.9
       },
+      "pagado": 8920800,
+      "plusvalia": -660800,
       "action": "hold",
       "valueToMe": 1279963,
       "inXI": true,
@@ -5191,6 +5260,8 @@ const EMBEDDED = {
         "esperada": -315604,
         "porcentaje": -3.8
       },
+      "pagado": 9912000,
+      "plusvalia": -1652000,
       "action": "hold",
       "valueToMe": 1019456,
       "inXI": true,
@@ -5352,6 +5423,8 @@ const EMBEDDED = {
         "esperada": -74287,
         "porcentaje": -1
       },
+      "pagado": 9781200,
+      "plusvalia": -2371200,
       "action": "hold",
       "valueToMe": 483547,
       "inXI": true,
@@ -5528,6 +5601,19 @@ function graficaPrecio(p){
     '</div>' +
     '<div class="chart-hd"><span>mín ' + eur(y0) + '€</span><span>máx ' + eur(y1) + '€</span></div>' +
   '</div>';
+}
+
+/** Qué dice la trayectoria del precio, en palabras. */
+function textoTendencia(p){
+  const t = p.reval && p.reval.tendencia;
+  if (!t) return '';
+  const dia = (n) => (n >= 0 ? '+' : '') + eur(n) + '€/día';
+  const partes = [];
+  partes.push('Última semana ' + dia(t.ritmo7) + ', último mes ' + dia(t.ritmo30));
+  if (t.acelera) partes.push(t.ritmo7 > 0 ? 'y acelerando' : 'y cayendo cada vez más rápido');
+  if (t.posicionEnRango > 0.9) partes.push('Está en su máximo del año');
+  else if (t.posicionEnRango < 0.1) partes.push('Está en su mínimo del año');
+  return '<div class="tend">' + esc(partes.join('. ')) + '.</div>';
 }
 
 /**
@@ -5752,11 +5838,22 @@ function comparacion(entra, sale){
 function dosNotas(p){
   if (p.quality === null || p.quality === undefined) return '';
   const col = (n) => n >= 7 ? 'var(--good)' : n >= 5 ? 'var(--mid)' : 'var(--bad)';
+  // La calidad es un percentil DENTRO de su posición: un 8 quiere decir que
+  // rinde más que el 80% de los de su puesto que juegan. No es una nota
+  // absoluta ni se compara un portero con un delantero.
+  const pos = { GK:'porteros', DF:'defensas', MF:'medios', FW:'delanteros' }[p.position] || 'su posición';
+  const explicaCalidad = p.quality >= 5
+    ? 'rinde más que el ' + Math.round(p.quality * 10) + '% de los ' + pos
+    : 'solo supera al ' + Math.round(p.quality * 10) + '% de los ' + pos;
+  const explicaOperacion = p.score >= 5
+    ? 'el techo supera lo que piden'
+    : 'piden más de lo que te aporta';
+
   return '<div class="dual">' +
     '<div><b style="color:' + col(p.quality) + '">' + p.quality.toFixed(1) + '</b>' +
-      '<span>Calidad del jugador</span></div>' +
+      '<span>Calidad</span><small>' + explicaCalidad + '</small></div>' +
     '<div><b style="color:' + col(p.score) + '">' + p.score.toFixed(1) + '</b>' +
-      '<span>¿Compensa el precio?</span></div>' +
+      '<span>¿Compensa?</span><small>' + explicaOperacion + '</small></div>' +
   '</div>';
 }
 
@@ -5836,13 +5933,28 @@ function squadCard(p){
           (p.inXI ? ' · titular' : ' · suplente') + '</div>' +
       '</div>' +
       '<div class="money">' +
-        '<div class="ask">' + eur(p.price) + '</div>' +
+        '<div class="ask">' + eur(p.price) +
+          (p.plusvalia !== null && p.plusvalia !== undefined && Math.abs(p.plusvalia) >= 50000
+            ? ' <span style="font-size:.68rem;color:' +
+              (p.plusvalia >= 0 ? 'var(--good)' : 'var(--bad)') + '">' +
+              (p.plusvalia >= 0 ? '+' : '') + eur(p.plusvalia) + '</span>'
+            : '') +
+        '</div>' +
         '<div class="verdict ' + (sell ? 'v-sell' : 'v-hold') + '">' + (sell ? 'Vender' : 'Mantener') + '</div>' +
       '</div>' +
     '</div>' +
     ultimos6(p) +
     '<div class="detail">' +
       '<div class="calc">' +
+        (p.pagado !== null && p.pagado !== undefined
+          ? '<div class="calc-l"><span>Lo compraste por</span><b>' + eur(p.pagado) + '</b></div>' +
+            '<div class="calc-l"><span>Plusvalía</span><b class="' +
+              (p.plusvalia >= 0 ? 'g' : 'r') + '" style="color:' +
+              (p.plusvalia >= 0 ? 'var(--good)' : 'var(--bad)') + '">' +
+              (p.plusvalia >= 0 ? '+' : '') + eur(p.plusvalia) + ' (' +
+              (p.plusvalia >= 0 ? '+' : '') +
+              (p.pagado ? Math.round((p.plusvalia / p.pagado) * 100) : 0) + '%)</b></div>'
+          : '') +
         '<div class="calc-l"><span>El mercado lo tasa en</span><b>' + eur(p.price) + '</b></div>' +
         '<div class="calc-l"><span>Vale para ti</span><b>' + eur(p.valueToMe) + '</b></div>' +
         (p.reval && Math.abs(p.reval.esperada) >= p.price * 0.1
@@ -5929,6 +6041,13 @@ function renderEconomia(){
       '<div class="calc-sep"></div>' +
       '<div class="econ-l"><span><b style="color:var(--ink)">Límite de puja</b></span><b>' +
         inf(a.limite) + '</b></div>' +
+      (DATA.capacidadMercado !== undefined
+        ? '<div class="calc-sep"></div>' +
+          '<div class="econ-l"><span>Fichajes que merecen la pena hoy</span><b>' +
+            eur(DATA.capacidadMercado) + '€</b></div>' +
+          '<div class="econ-l"><span>Lo que aún no cubre tu saldo</span><b>' +
+            eur(DATA.capacidadLibre) + '€</b></div>'
+        : '') +
       (a.exposicion ? '<div class="econ-l"><span>Comprometido si ganas todo</span><b>' +
         eur(a.exposicion) + '€</b></div>' : '') +
       '<div class="adj">' +
@@ -5939,6 +6058,10 @@ function renderEconomia(){
       '</div>' +
       '<div class="hint" style="margin-top:6px">Suma o resta euros si has operado hoy. ' +
         'Para ventas es más cómodo marcarlas abajo en cada jugador.</div>' +
+      (DATA.capacidadLibre !== undefined && DATA.capacidadLibre < 2_000_000
+        ? '<div class="hint" style="color:var(--mid);margin-top:6px">Hoy hay poco que comprar, ' +
+          'así que vender rinde poco: el dinero se quedaría parado.</div>'
+        : '') +
     '</div>';
 
   const inp = document.getElementById('adj-in');
@@ -6019,6 +6142,41 @@ function renderXI(){
     'Los recuadrados en verde son los que todavía no tienes puestos.';
 }
 
+/**
+ * Cuándo se generaron estos datos. Sin esto es imposible saber si estás
+ * mirando el análisis de esta madrugada o el de hace tres días, y eso convierte
+ * cualquier duda sobre las recomendaciones en una adivinanza.
+ */
+function renderFrescura(){
+  const caja = document.getElementById('frescura');
+  const cuando = DATA.generatedAt ? Date.parse(DATA.generatedAt) : NaN;
+
+  if (DATA.simulated){
+    caja.className = 'frescura f-viejo';
+    caja.textContent = 'Datos de demostración. Conecta tu cuenta para ver tu liga.';
+    return;
+  }
+  if (!Number.isFinite(cuando)){
+    caja.className = 'frescura f-viejo';
+    caja.textContent = 'Estos datos no dicen cuándo se generaron.';
+    return;
+  }
+
+  const horas = (Date.now() - cuando) / 3600000;
+  const d = new Date(cuando);
+  const sello = ('0'+d.getDate()).slice(-2) + '/' + ('0'+(d.getMonth()+1)).slice(-2) +
+    ' a las ' + ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2);
+
+  let cuanto;
+  if (horas < 1) cuanto = 'hace ' + Math.max(1, Math.round(horas * 60)) + ' minutos';
+  else if (horas < 24) cuanto = 'hace ' + Math.round(horas) + ' horas';
+  else cuanto = 'hace ' + Math.round(horas / 24) + ' días';
+
+  caja.className = 'frescura ' + (horas < 30 ? 'f-ok' : horas < 72 ? 'f-viejo' : 'f-rancio');
+  caja.textContent = 'Análisis del ' + sello + ' (' + cuanto + ')' +
+    (horas >= 30 ? ' · el mercado de Biwenger ha rotado desde entonces' : '');
+}
+
 function renderChrome(){
   document.getElementById('m-bal').textContent = eur(DATA.me.balance) + '€';
   document.getElementById('m-lambda').textContent = DATA.lambda.toFixed(2).replace('.',',');
@@ -6043,7 +6201,7 @@ function renderChrome(){
       'así que solo el saldo se desfasa durante el día · ⚙ para cambiar la fuente';
 }
 
-function render(){ renderChrome(); renderMarket(); renderEconomia(); renderSquad(); renderChanges(); renderXI(); }
+function render(){ renderChrome(); renderFrescura(); renderMarket(); renderEconomia(); renderSquad(); renderChanges(); renderXI(); }
 
 /* filtros */
 const chips = [['ALL','Todos'],['GK','POR'],['DF','DEF'],['MF','MED'],['FW','DEL']];

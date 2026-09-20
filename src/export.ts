@@ -141,6 +141,10 @@ export function buildPayload(
   };
 
   const askByPlayer = new Map(state.market.map((m) => [m.playerId, m.askingPrice]));
+  // Lo que pagó su dueño. En tu plantilla viene de `owner.price` de la API.
+  const pagadoPor = new Map(
+    state.me.squad.filter((s) => s.boughtFor != null).map((s) => [s.playerId, s.boughtFor!]),
+  );
   // Quién lo vende y cuándo cierra la subasta. Saber que lo pone un rival
   // concreto cambia la lectura: no es lo mismo una ganga del mercado libre que
   // alguien deshaciéndose de un jugador.
@@ -155,6 +159,9 @@ export function buildPayload(
     round: state.currentRound,
     simulated: false,
     lambda: Math.round(result.lambda * 1000) / 1000,
+    // Cuánto dinero cabe colocar hoy. Manda sobre el valor de cualquier venta.
+    capacidadMercado: result.capacidadMercado,
+    capacidadLibre: result.capacidadLibre,
     // Fichajes que mejoran tu once y encima te dejan dinero. Prioridad máxima.
     freeUpgrades: (result.freeUpgrades ?? []).map((g) => ({
       entra: byId.get(g.inId)?.name ?? String(g.inId),
@@ -199,6 +206,10 @@ export function buildPayload(
       quality: r.quality ?? null,
       reval: r.appreciation ?? null,
       valorPuntos: r.valueFromPoints ?? null,
+      pagado: pagadoPor.get(r.playerId) ?? null,
+      plusvalia: pagadoPor.has(r.playerId)
+        ? (byId.get(r.playerId)?.price ?? 0) - pagadoPor.get(r.playerId)!
+        : null,
       action: r.action,
       askingPrice: r.askingPrice ?? askByPlayer.get(r.playerId) ?? 0,
       maxBid: Math.round(r.maxBid),
@@ -217,6 +228,11 @@ export function buildPayload(
       score: r.score,
       quality: r.quality ?? null,
       reval: r.appreciation ?? null,
+      // Cuánto pagaste por él y cuánto llevas ganado o perdido.
+      pagado: pagadoPor.get(r.playerId) ?? null,
+      plusvalia: pagadoPor.has(r.playerId)
+        ? (byId.get(r.playerId)?.price ?? 0) - pagadoPor.get(r.playerId)!
+        : null,
       action: r.action,
       valueToMe: Math.round(r.maxBid),
       inXI: xiIds.has(r.playerId),
