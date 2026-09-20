@@ -98,9 +98,31 @@ export class BiwengerClient {
       'X-League': this.league,
       'X-User': this.user,
       'X-Lang': 'es',
+      // Cloudflare protege cf.biwenger.com y rechaza lo que huele a robot.
+      // Sin estas tres cabeceras, la petición sale con el agente de usuario de
+      // Node y desde una IP de centro de datos devuelve 403 siempre, aunque el
+      // token sea perfectamente válido. Desde una conexión doméstica cuela.
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+        '(KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+      'Accept-Language': 'es-ES,es;q=0.9',
+      Referer: 'https://biwenger.as.com/',
     };
     if (config.biwenger.version) h['X-Version'] = config.biwenger.version;
     return h;
+  }
+
+  /**
+   * Los datos de competición los sirven dos hosts. `cf.biwenger.com` es el
+   * habitual, pero es el que Cloudflare bloquea desde servidores. Si falla, se
+   * intenta la misma ruta en `biwenger.as.com`, que responde a login y liga sin
+   * problemas desde cualquier sitio.
+   */
+  private alternativa(url: string): string | null {
+    if (url.includes('cf.biwenger.com')) {
+      return url.replace('https://cf.biwenger.com', 'https://biwenger.as.com');
+    }
+    return null;
   }
 
   private async throttle(): Promise<void> {
@@ -150,10 +172,27 @@ export class BiwengerClient {
       await this.esperar(intento);
     }
 
+    // Último recurso: el otro host.
+    const otra = this.alternativa(url);
+    if (otra) {
+      console.warn(`  [host alternativo] probando ${otra.slice(0, 60)}…`);
+      try {
+        await this.throttle();
+        const res = await fetch(otra, { headers: this.headers() });
+        if (res.ok) {
+          const body = (await res.json()) as any;
+          return (body?.data ?? body) as T;
+        }
+        ultimoError = `${ultimoError} · alternativa: ${res.status}`;
+      } catch (err) {
+        ultimoError = `${ultimoError} · alternativa: ${(err as Error).message}`;
+      }
+    }
+
     throw new Error(
       `${ultimoError} en ${url}\n` +
-        `  Si es un 403 repetido, Biwenger está limitando por exceso de peticiones:\n` +
-        `  espera unos minutos y vuelve a intentarlo.`,
+        `  Un 403 constante en cf.biwenger.com suele ser Cloudflare bloqueando\n` +
+        `  IP de centros de datos. Desde casa funciona; desde un servidor no.`,
     );
   }
 

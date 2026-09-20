@@ -20,8 +20,8 @@ jobs:
       fail-fast: false
       matrix:
         manager:
-          - { slug: dani,  email_secret: DANI_EMAIL, pass_secret: DANI_PASSWORD }
-          - { slug: ana,   email_secret: ANA_EMAIL,  pass_secret: ANA_PASSWORD }
+          - { slug: dani, email_secret: DANI_EMAIL, pass_secret: DANI_PASSWORD }
+          - { slug: ana,  email_secret: ANA_EMAIL,  pass_secret: ANA_PASSWORD }
 
     steps:
       - uses: actions/checkout@v4
@@ -29,15 +29,37 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
 
-      - run: npm ci
+      # `npm ci` exige package-lock.json. Si no está en el repositorio, falla
+      # al instante con un mensaje que no dice gran cosa, así que se recurre a
+      # `npm install` en ese caso.
+      - name: Instalar
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          else
+            echo "Sin package-lock.json: usando npm install"
+            npm install --no-audit --no-fund
+          fi
+
+      - name: Comprobar credenciales
+        env:
+          EMAIL: ${{ secrets[matrix.manager.email_secret] }}
+          PASS: ${{ secrets[matrix.manager.pass_secret] }}
+        run: |
+          if [ -z "$EMAIL" ] || [ -z "$PASS" ]; then
+            echo "Faltan los secretos ${{ matrix.manager.email_secret }} y/o ${{ matrix.manager.pass_secret }}."
+            echo "Créalos en Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+          echo "Credenciales de ${{ matrix.manager.slug }} presentes."
 
       - name: Snapshot de ${{ matrix.manager.slug }}
         env:
           BIWENGER_EMAIL: ${{ secrets[matrix.manager.email_secret] }}
           BIWENGER_PASSWORD: ${{ secrets[matrix.manager.pass_secret] }}
           BIWENGER_LEAGUE: ${{ secrets.BIWENGER_LEAGUE }}
+          BIWENGER_BID_MODE: ${{ secrets.BIWENGER_BID_MODE }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           # Base separada por manager: comparten mercado pero no plantilla.
@@ -46,12 +68,15 @@ jobs:
         run: npm run snapshot
 
       # Los trabajos de la matriz corren en paralelo y chocarían al hacer push,
-      # así que cada uno sube su fichero como artefacto y el job de abajo los
-      # junta en un único commit.
+      # así que cada uno sube su fichero y el job de abajo los junta.
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: salida-${{ matrix.manager.slug }}
-          path: ./data/*
+          path: |
+            data/market-*.json
+            data/*.db
+          if-no-files-found: ignore
 
   publicar:
     needs: snapshot
@@ -63,18 +88,31 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: ./descargas
+        continue-on-error: true
 
-      - name: Consolidar
+      - name: Consolidar y publicar
         run: |
           mkdir -p data
-          find ./descargas -type f -name '*.json' -exec cp {} data/ \;
-          find ./descargas -type f -name '*.db'   -exec cp {} data/ \;
-          ls -la data/
+          encontrados=0
+          if [ -d ./descargas ]; then
+            for f in $(find ./descargas -type f \( -name '*.json' -o -name '*.db' \)); do
+              cp "$f" data/
+              encontrados=$((encontrados+1))
+            done
+          fi
+          echo "$encontrados fichero(s) recogidos"
 
-      - name: Commit
-        run: |
+          if [ "$encontrados" -eq 0 ]; then
+            echo "Ningún manager produjo datos. Mira los errores de los jobs de arriba."
+            exit 0
+          fi
+
           git config user.name "snapshot-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add -f data/*.json data/*.db
-          git diff --staged --quiet || git commit -m "snapshot $(date +%F)"
-          git push
+          git add -f data/market-*.json data/*.db 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "Sin cambios que publicar."
+          else
+            git commit -m "snapshot $(date +%F)"
+            git push
+          fi
