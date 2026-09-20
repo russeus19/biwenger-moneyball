@@ -1,0 +1,80 @@
+name: Snapshot diario
+
+# El mercado de Biwenger rota de madrugada. 02:15 hora peninsular.
+on:
+  schedule:
+    - cron: '15 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+
+    # Una ejecución por manager. Las recomendaciones dependen de la plantilla y
+    # del saldo de cada uno, así que el mismo mercado da resultados distintos.
+    # Para añadir a alguien: una entrada más aquí y sus dos secretos.
+    strategy:
+      fail-fast: false
+      matrix:
+        manager:
+          - { slug: dani,  email_secret: DANI_EMAIL, pass_secret: DANI_PASSWORD }
+          - { slug: ana,   email_secret: ANA_EMAIL,  pass_secret: ANA_PASSWORD }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Snapshot de ${{ matrix.manager.slug }}
+        env:
+          BIWENGER_EMAIL: ${{ secrets[matrix.manager.email_secret] }}
+          BIWENGER_PASSWORD: ${{ secrets[matrix.manager.pass_secret] }}
+          BIWENGER_LEAGUE: ${{ secrets.BIWENGER_LEAGUE }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # Base separada por manager: comparten mercado pero no plantilla.
+          DB_PATH: ./data/${{ matrix.manager.slug }}.db
+          MANAGER_SLUG: ${{ matrix.manager.slug }}
+        run: npm run snapshot
+
+      # Los trabajos de la matriz corren en paralelo y chocarían al hacer push,
+      # así que cada uno sube su fichero como artefacto y el job de abajo los
+      # junta en un único commit.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: salida-${{ matrix.manager.slug }}
+          path: ./data/*
+
+  publicar:
+    needs: snapshot
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: ./descargas
+
+      - name: Consolidar
+        run: |
+          mkdir -p data
+          find ./descargas -type f -name '*.json' -exec cp {} data/ \;
+          find ./descargas -type f -name '*.db'   -exec cp {} data/ \;
+          ls -la data/
+
+      - name: Commit
+        run: |
+          git config user.name "snapshot-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add -f data/*.json data/*.db
+          git diff --staged --quiet || git commit -m "snapshot $(date +%F)"
+          git push

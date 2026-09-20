@@ -1,0 +1,6318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Biwenger Moneyball</title>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#f7f6f3; --card:#fff; --ink:#191817; --muted:#767069; --faint:#a39d95;
+  --line:#e5e1da; --line-soft:#efece6;
+  --good:#1a7a4e; --good-bg:#e4f2ea;
+  --mid:#9c6a10; --mid-bg:#fbf0dc;
+  --bad:#9c3b32; --bad-bg:#fae9e7;
+  --accent:#1a7a4e;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141416; --card:#1d1d20; --ink:#ecebe8; --muted:#9b958d; --faint:#6e6862;
+  --line:#2f2f35; --line-soft:#26262b;
+  --good:#5ecf96; --good-bg:#172b21;
+  --mid:#e3ae63; --mid-bg:#2e2519;
+  --bad:#e78b80; --bad-bg:#2e1d1b;
+  --accent:#5ecf96;
+}}
+:root[data-theme="dark"]{
+  --bg:#141416; --card:#1d1d20; --ink:#ecebe8; --muted:#9b958d; --faint:#6e6862;
+  --line:#2f2f35; --line-soft:#26262b;
+  --good:#5ecf96; --good-bg:#172b21;
+  --mid:#e3ae63; --mid-bg:#2e2519;
+  --bad:#e78b80; --bad-bg:#2e1d1b;
+  --accent:#5ecf96;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5;-webkit-tap-highlight-color:transparent}
+.app{max-width:520px;margin:0 auto;padding:0 12px 90px}
+
+/* cabecera */
+.head{padding:16px 2px 12px}
+.head h1{font-size:1.15rem;margin:0;letter-spacing:-.02em}
+.sim{display:inline-block;font-size:.62rem;text-transform:uppercase;letter-spacing:.07em;
+  background:var(--mid-bg);color:var(--mid);padding:2px 7px;border-radius:999px;font-weight:700;margin-left:6px;vertical-align:2px}
+.meta{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:.75rem;color:var(--muted)}
+.meta b{color:var(--ink);font-variant-numeric:tabular-nums}
+
+/* tabs */
+.tabs{display:flex;gap:4px;background:var(--line-soft);padding:3px;border-radius:11px;margin:4px 0 14px}
+.tab{flex:1;border:0;background:none;color:var(--muted);font:inherit;font-size:.82rem;font-weight:600;
+  padding:8px 4px;border-radius:9px;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+
+/* filtros */
+.chips{display:flex;gap:6px;overflow-x:auto;padding:0 0 12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--card);color:var(--muted);
+  font:inherit;font-size:.75rem;padding:5px 11px;border-radius:999px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+/* tarjeta jugador */
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:9px;overflow:hidden}
+.row{display:flex;align-items:center;gap:9px;padding:12px;cursor:pointer}
+.avatar{flex:none;width:42px;height:42px;border-radius:50%;position:relative;
+  background:var(--bg);overflow:visible}
+/* Las iniciales son el respaldo: van debajo y la foto las tapa. Con
+   display:grid quedaban una encima de otra en filas distintas y la foto
+   salía aplastada o fuera de vista. */
+.avatar .ini{position:absolute;inset:0;display:grid;place-items:center;
+  font-size:.8rem;font-weight:700;color:var(--faint);letter-spacing:-.02em}
+.avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  border-radius:50%;background:var(--line-soft)}
+.badge{position:absolute;right:-3px;bottom:-3px;width:19px;height:19px;border-radius:50%;
+  background:var(--card);border:1px solid var(--line);overflow:hidden;z-index:2}
+.badge img{position:absolute;inset:1px;width:calc(100% - 2px);height:calc(100% - 2px);object-fit:contain}
+.chart{margin:0 0 11px}
+.chart-box{position:relative;touch-action:pan-y;cursor:crosshair}
+.chart svg{display:block;width:100%;height:82px}
+.chart-cursor{position:absolute;top:0;bottom:0;width:1px;background:var(--faint);
+  opacity:0;pointer-events:none;transition:opacity .12s}
+.chart-dot{position:absolute;width:9px;height:9px;border-radius:50%;border:2px solid var(--card);
+  opacity:0;pointer-events:none;transform:translate(-50%,-50%);transition:opacity .12s}
+.chart-box.activo .chart-cursor,.chart-box.activo .chart-dot{opacity:1}
+.chart-lectura{font-size:.74rem;font-variant-numeric:tabular-nums;font-weight:700}
+.chart-fecha{font-size:.62rem;color:var(--faint);text-transform:none;letter-spacing:0}
+.chart-hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.chart-hd span{font-size:.62rem;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+.chart-hd b{font-size:.74rem;font-variant-numeric:tabular-nums}
+.chart-none{font-size:.72rem;color:var(--faint);background:var(--bg);border-radius:9px;
+  padding:9px 11px;margin-bottom:11px;line-height:1.4}
+.score{flex:none;width:38px;height:38px;border-radius:10px;display:grid;place-items:center;
+  font-weight:700;font-size:1.02rem;font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.s-good{background:var(--good-bg);color:var(--good)}
+.s-mid{background:var(--mid-bg);color:var(--mid)}
+.s-bad{background:var(--bad-bg);color:var(--bad)}
+.who{flex:1;min-width:0}
+.nm{font-weight:600;font-size:.93rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb{font-size:.74rem;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pos{display:inline-block;font-size:.6rem;font-weight:800;letter-spacing:.04em;
+  border:1px solid var(--line);border-radius:4px;padding:0 4px;margin-right:5px;color:var(--faint)}
+.money{flex:none;text-align:right}
+.ask{font-size:.87rem;font-weight:600;font-variant-numeric:tabular-nums}
+.verdict{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+.v-buy{color:var(--good)} .v-no{color:var(--faint)} .v-sell{color:var(--bad)} .v-hold{color:var(--faint)}
+
+/* detalle desplegable */
+.detail{border-top:1px solid var(--line-soft);padding:12px;display:none}
+.card.open .detail{display:block}
+.calc{background:var(--bg);border-radius:10px;padding:10px 11px;margin-bottom:11px}
+.calc-l{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:.8rem;padding:3px 0}
+.calc-l span:first-child{color:var(--muted)}
+.calc-l b{font-variant-numeric:tabular-nums;font-weight:600}
+.calc-sep{border-top:1px dashed var(--line);margin:6px 0}
+.calc-l.big b{font-size:1rem}
+.calc-l.big span:first-child{color:var(--ink);font-weight:600}
+
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:11px}
+.stat{background:var(--bg);border-radius:9px;padding:7px 4px;text-align:center}
+.stat b{display:block;font-size:.88rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.stat span{font-size:.58rem;color:var(--faint);text-transform:uppercase;letter-spacing:.04em}
+
+/* Código de color de Biwenger para las puntuaciones */
+.pill{display:inline-grid;place-items:center;min-width:26px;height:26px;padding:0 5px;
+  border-radius:7px;font-size:.78rem;font-weight:700;font-variant-numeric:tabular-nums;
+  letter-spacing:-.02em;line-height:1}
+.p-neg{background:#e5484d;color:#fff}
+.p-zero{background:var(--line);color:var(--muted)}
+.p-low{background:#f0932b;color:#fff}
+.p-mid{background:#2ea36b;color:#fff}
+.p-high{background:#2f6fe4;color:#fff}
+.p-none{background:transparent;color:var(--faint);border:1px dashed var(--line)}
+
+/* Fila de últimos partidos en la tarjeta */
+.last6{display:flex;align-items:center;gap:5px;padding:0 12px 11px;flex-wrap:nowrap;overflow:hidden}
+.last6-lbl{font-size:.6rem;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;
+  font-weight:700;flex:none;margin-right:2px}
+.total{flex:none;margin-left:auto;text-align:right;line-height:1}
+.total b{font-size:1.35rem;font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.total span{display:block;font-size:.57rem;color:var(--faint);text-transform:uppercase;
+  letter-spacing:.05em;font-weight:700;margin-top:1px}
+
+/* Rejilla jornada a jornada del desplegable */
+/* Medias casa / fuera */
+.venue{display:flex;gap:7px;margin-bottom:11px}
+.venue div{flex:1;background:var(--bg);border-radius:9px;padding:8px 6px;text-align:center}
+.venue .em{font-size:.95rem;line-height:1}
+.venue b{display:block;font-size:1.02rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em;margin-top:2px}
+.venue span{font-size:.57rem;color:var(--faint);text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+
+/* Histórico estilo Biwenger: jornada · escudos y resultado · barra · eventos */
+.bw{margin-bottom:12px;border-radius:10px;overflow:hidden;background:var(--bg)}
+.bw-row{display:flex;align-items:center;gap:7px;padding:6px 8px;border-top:1px solid var(--line-soft)}
+.bw-row:first-child{border-top:0}
+.bw-j{flex:none;min-width:27px;text-align:center;font-size:.64rem;font-weight:700;
+  color:var(--muted);background:var(--card);border-radius:6px;padding:3px 4px}
+.bw-m{flex:none;display:flex;align-items:center;gap:3px;font-size:.66rem;
+  font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+.bw-m img{width:14px;height:14px;object-fit:contain;display:block}
+.bw-m .sh{flex:none;width:14px;height:14px;border-radius:3px;background:var(--line)}
+.bw-bar{flex:1;min-width:0;height:20px;position:relative}
+.bw-fill{height:100%;border-radius:5px;display:flex;align-items:center;justify-content:flex-end;
+  padding:0 6px;min-width:22px;font-size:.73rem;font-weight:700;font-variant-numeric:tabular-nums}
+.bw-ev{flex:none;display:flex;align-items:center;gap:2px;font-size:.72rem;min-width:16px;justify-content:flex-end}
+.bw-card{display:inline-block;width:8px;height:11px;border-radius:2px;vertical-align:-1px}
+.bw-y{background:#f2d024}
+.bw-r{background:#e5484d}
+.bw-nd{font-size:.63rem;color:var(--faint);padding-left:2px}
+.spark-lbl{font-size:.63rem;color:var(--faint)}
+
+/* Histórico de puntos */
+.hist{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:.76rem}
+.hist th{font-size:.57rem;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;
+  font-weight:700;text-align:left;padding:0 5px 5px;white-space:nowrap}
+.hist th.r,.hist td.r{text-align:right}
+.hist th.c,.hist td.c{text-align:center}
+.hist td{padding:5px;border-top:1px solid var(--line-soft);vertical-align:middle}
+.hist td.riv{color:var(--muted);max-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist td.min{color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
+.hist .ga{font-variant-numeric:tabular-nums;white-space:nowrap}
+.hist .nada{color:var(--line)}
+.hist .pill{min-width:24px;height:24px;font-size:.73rem}
+.jornadas{display:grid;grid-template-columns:repeat(auto-fit,minmax(38px,1fr));gap:5px;margin-bottom:12px}
+.jor{text-align:center}
+.jor-n{font-size:.56rem;color:var(--faint);font-weight:700;margin-bottom:3px}
+.jor .pill{width:100%}
+.jor-min{font-size:.52rem;color:var(--faint);margin-top:2px}
+
+.why{list-style:none;margin:0;padding:0}
+.why li{font-size:.79rem;color:var(--muted);padding-left:13px;position:relative;margin-bottom:4px;line-height:1.4}
+.why li::before{content:"";position:absolute;left:3px;top:8px;width:4px;height:4px;border-radius:50%;background:var(--faint)}
+
+.empty{text-align:center;color:var(--muted);font-size:.85rem;padding:28px 16px;background:var(--card);
+  border:1px dashed var(--line);border-radius:14px}
+.section-t{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);
+  font-weight:700;margin:16px 0 8px}
+
+/* once */
+.pitch{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 10px;margin-bottom:12px}
+.line{display:flex;justify-content:center;gap:6px;margin-bottom:9px;flex-wrap:wrap}
+.pl{background:var(--bg);border-radius:9px;padding:6px 7px;text-align:center;min-width:64px;max-width:86px}
+.pl .n{font-size:.68rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl .p{font-size:.64rem;color:var(--accent);font-variant-numeric:tabular-nums;font-weight:700}
+
+.swap{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:8px}
+.swap-top{display:flex;align-items:center;gap:8px;font-size:.86rem}
+.swap-out{color:var(--bad);text-decoration:line-through;opacity:.75}
+.swap-in{color:var(--good);font-weight:600}
+.swap-ar{color:var(--faint);flex:none}
+.swap-meta{font-size:.72rem;color:var(--muted);margin-top:3px}
+.swap-gain{font-variant-numeric:tabular-nums;font-weight:700;color:var(--good)}
+.warn{background:var(--bad-bg);color:var(--bad);border-radius:11px;padding:11px 12px;
+  font-size:.77rem;line-height:1.45;margin-bottom:9px;font-weight:600}
+.adj{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.adj label{font-size:.72rem;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;font-weight:700;flex:none}
+.adj input{flex:1;min-width:0;background:var(--bg);color:var(--ink);border:1px solid var(--line);
+  border-radius:8px;padding:7px 9px;font:inherit;font-size:.82rem;font-variant-numeric:tabular-nums}
+.adj button{flex:none;border:1px solid var(--line);background:var(--card);color:var(--muted);
+  font:inherit;font-size:.72rem;padding:7px 10px;border-radius:8px;cursor:pointer}
+.simbtn{width:100%;margin-top:8px;border:1px solid var(--line);background:var(--bg);color:var(--muted);
+  font:inherit;font-size:.75rem;padding:8px;border-radius:9px;cursor:pointer}
+.simbtn[aria-pressed="true"]{background:var(--bad-bg);color:var(--bad);border-color:var(--bad-bg);font-weight:600}
+.econ{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.econ-l{display:flex;justify-content:space-between;font-size:.8rem;padding:3px 0}
+.econ-l span:first-child{color:var(--muted)}
+.econ-l b{font-variant-numeric:tabular-nums}
+.gratis{background:var(--good-bg);border-radius:12px;padding:12px;margin-bottom:12px}
+.gratis h3{font-size:.8rem;margin:0 0 7px;color:var(--good)}
+.gratis-r{display:flex;align-items:center;gap:7px;font-size:.8rem;padding:4px 0}
+.gratis-r .sale{color:var(--muted);text-decoration:line-through;opacity:.7}
+.gratis-r .entra{font-weight:700;color:var(--good)}
+.gratis-r .mas{margin-left:auto;font-size:.73rem;font-weight:700;color:var(--good);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.gratis p{font-size:.72rem;color:var(--muted);margin:6px 0 0;line-height:1.4}
+/* Comparador uno contra uno */
+.cmp{background:var(--bg);border-radius:10px;padding:11px;margin-bottom:12px}
+.cmp-sel{width:100%;background:var(--card);color:var(--ink);border:1px solid var(--line);
+  border-radius:8px;padding:8px 9px;font:inherit;font-size:.82rem;margin-bottom:10px}
+.cmp-hd{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.cmp-hd .a,.cmp-hd .b{flex:1;min-width:0;font-size:.76rem;font-weight:700;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cmp-hd .a{color:var(--good)}
+.cmp-hd .b{color:var(--muted);text-align:right}
+.cmp-hd .vs{flex:none;font-size:.6rem;color:var(--faint);font-weight:700}
+.cmp-r{display:flex;align-items:center;gap:6px;padding:4px 0;border-top:1px solid var(--line-soft);
+  font-size:.78rem;font-variant-numeric:tabular-nums}
+.cmp-r .k{flex:none;width:34%;font-size:.65rem;color:var(--faint);text-transform:uppercase;
+  letter-spacing:.04em;font-weight:700;text-align:center;order:2}
+.cmp-r .v1{flex:1;text-align:left;order:1;font-weight:600}
+.cmp-r .v2{flex:1;text-align:right;order:3;color:var(--muted)}
+.cmp-r .win{color:var(--good)}
+.cmp-res{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:.8rem;line-height:1.5}
+.cmp-res b{font-variant-numeric:tabular-nums}
+.cmp-ok{color:var(--good);font-weight:700}
+.cmp-no{color:var(--bad);font-weight:700}
+.dual{display:flex;gap:7px;margin-bottom:11px}
+.dual div{flex:1;background:var(--bg);border-radius:9px;padding:9px 6px;text-align:center}
+.dual b{display:block;font-size:1.15rem;font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.dual span{font-size:.57rem;color:var(--faint);text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+.resumen{background:var(--good-bg);color:var(--good);border-radius:11px;padding:11px 12px;
+  font-size:.8rem;line-height:1.45;margin-bottom:12px;font-weight:600}
+.banner{background:var(--mid-bg);color:var(--mid);border-radius:11px;padding:10px 12px;
+  font-size:.76rem;line-height:1.45;margin-bottom:12px}
+.banner b{font-weight:700}
+.gear{background:none;border:0;color:var(--faint);font-size:1rem;cursor:pointer;padding:2px 4px;vertical-align:1px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px}
+.panel h2{font-size:.98rem;margin:0 0 4px}
+.panel label{display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--faint);font-weight:700;margin:13px 0 5px}
+.panel input,.panel textarea{width:100%;background:var(--bg);color:var(--ink);
+  border:1px solid var(--line);border-radius:9px;padding:9px 10px;font:inherit;font-size:.82rem;
+  font-family:var(--mono);resize:vertical}
+.hint{font-size:.73rem;color:var(--muted);margin:6px 0 0;line-height:1.45}
+.btns{display:flex;gap:8px;margin-top:14px}
+.btn{flex:1;border:1px solid var(--line);background:var(--card);color:var(--ink);
+  font:inherit;font-size:.82rem;font-weight:600;padding:10px;border-radius:10px;cursor:pointer}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.src{font-size:.68rem;color:var(--faint);margin-top:3px}
+footer{margin-top:22px;font-size:.7rem;color:var(--faint);line-height:1.5;padding:0 2px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="head">
+    <h1>Biwenger Moneyball<span class="sim" id="simtag">Simulado</span>
+      <button class="gear" id="gear" title="Conectar datos">⚙</button></h1>
+    <div class="meta">
+      <span>Saldo <b id="m-bal">—</b></span>
+      <span>Límite <b id="m-limite">—</b></span>
+      <span>λ <b id="m-lambda">—</b> pts/M€</span>
+      <span>J<b id="m-round">—</b></span>
+    </div>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-t="market" aria-selected="true">Mercado</button>
+    <button class="tab" role="tab" data-t="squad" aria-selected="false">Plantilla</button>
+    <button class="tab" role="tab" data-t="xi" aria-selected="false">Mi once</button>
+  </div>
+
+  <div id="settings" class="hidden">
+    <div class="panel">
+      <h2>Conectar tus datos</h2>
+      <p class="hint">Dos formas. Las dos guardan en este navegador y sobreviven al cierre.</p>
+
+      <label>Quién eres</label>
+      <div class="btns" id="s-users"></div>
+      <p class="hint">Cada una tiene su propio análisis: el techo de puja depende
+        de tu plantilla y de tu saldo, así que el mismo mercado da números distintos.</p>
+
+      <label>URL del JSON (avanzado)</label>
+      <input id="s-url" type="url" inputmode="url" autocapitalize="off" autocorrect="off"
+             placeholder="https://raw.githubusercontent.com/&#8230;/market.json">
+      <p class="hint">Tiene que ser <b>https</b>. Una URL <b>http</b> la bloquea el navegador.</p>
+
+      <label>O pega el JSON directamente</label>
+      <textarea id="s-json" rows="5" placeholder='{"date":"2026-09-19","market":[&#8230;]}'></textarea>
+
+      <div class="btns">
+        <button class="btn primary" id="s-save">Guardar y cargar</button>
+        <button class="btn" id="s-reset">Volver a simulados</button>
+      </div>
+      <p class="hint" id="s-status"></p>
+    </div>
+  </div>
+
+  <div id="v-market">
+    <div class="banner" id="banner"></div>
+    <div class="chips" id="chips"></div>
+    <div id="market-list"></div>
+  </div>
+
+  <div id="v-squad" class="hidden">
+    <div id="economia"></div>
+    <div id="squad-list"></div>
+  </div>
+
+  <div id="v-xi" class="hidden">
+    <div id="changes"></div>
+    <div class="pitch" id="pitch"></div>
+    <div class="banner" id="xi-note"></div>
+  </div>
+
+  <footer id="foot"></footer>
+</div>
+
+<script>
+/* =========================================================================
+   Publicado en Vercel, los datos viven en el MISMO dominio que la página:
+   /market-<usuario>.json. Al ser mismo origen no hay problema de CORS ni de
+   http contra https, que es lo que nos complicaba la vida antes.
+
+   El usuario sale de ?u=... en la URL, o del que se guardó la última vez.
+   Si el fichero no existe (por ejemplo abriendo la app suelta), cae a los
+   datos de demostración incrustados.
+   ========================================================================= */
+const USUARIOS = ['dani', 'ana'];
+
+function usuarioActual(){
+  try {
+    const p = new URLSearchParams(location.search).get('u');
+    if (p && USUARIOS.includes(p)) return p;
+  } catch {}
+  try {
+    const g = localStorage.getItem('bwm_user');
+    if (g && USUARIOS.includes(g)) return g;
+  } catch {}
+  return USUARIOS[0];
+}
+
+const DATA_URL = './market-' + usuarioActual() + '.json';
+
+const EMBEDDED = {
+  "generatedAt": "2026-09-20T00:11:42.581Z",
+  "date": "2026-09-20",
+  "round": 8,
+  "simulated": true,
+  "lambda": 2.978,
+  "freeUpgrades": [
+    {
+      "entra": "Zabiri",
+      "sale": "Dimitrievski",
+      "gain": 19.1,
+      "ingreso": 1630324
+    },
+    {
+      "entra": "Mariano",
+      "sale": "Dimitrievski",
+      "gain": 13,
+      "ingreso": 2775703
+    }
+  ],
+  "replacement": {
+    "GK": 30.7,
+    "DF": 14.8,
+    "MF": 26.5,
+    "FW": 26.3
+  },
+  "economia": {
+    "saldo": 12500000,
+    "valorPlantilla": 90740000,
+    "modo": "saldo25",
+    "limitePuja": 35185000,
+    "margenDeuda": 22685000,
+    "exposicionTotal": 13825000,
+    "descubierto": 0,
+    "avisos": [
+      "Si ganas todas las pujas te quedas en negativo (1.3M€). Entra dentro del límite, pero tienes que cerrar en positivo antes de la jornada o tu equipo no puntúa."
+    ],
+    "ventasNecesarias": []
+  },
+  "me": {
+    "balance": 12500000,
+    "formation": {
+      "GK": 1,
+      "DF": 3,
+      "MF": 4,
+      "FW": 3
+    },
+    "xiPoints": 284.7,
+    "currentLineup": [
+      9033,
+      9051,
+      9052,
+      9055,
+      9057,
+      9060,
+      9063,
+      9064,
+      9061,
+      9058,
+      9069
+    ],
+    "currentPoints": 281.9,
+    "changes": [
+      {
+        "outId": 9033,
+        "outName": "Dimitrievski",
+        "inId": 9030,
+        "inName": "Agirrezabala",
+        "position": "GK",
+        "gain": 1.4
+      },
+      {
+        "outId": 9069,
+        "outName": "Enes Ünal",
+        "inId": 9066,
+        "inName": "Cucho Hernández",
+        "position": "FW",
+        "gain": 1.4
+      }
+    ]
+  },
+  "market": [
+    {
+      "id": 9006,
+      "name": "Zabiri",
+      "position": "FW",
+      "team": "Racing",
+      "teamId": 4,
+      "price": 4930000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 52,
+      "matches": 6,
+      "projectedPoints": 48.3,
+      "startProbability": 1,
+      "per90": 8.04,
+      "volatility": 9,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 1,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 21,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 0,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 17,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 11,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 9,
+      "quality": 7.4,
+      "reval": {
+        "precioJusto": 11165532,
+        "esperada": 1930421,
+        "porcentaje": 39.2
+      },
+      "valorPuntos": 6399912,
+      "action": "buy",
+      "askingPrice": 5182327,
+      "maxBid": 8330333,
+      "suggestedBid": 8016000,
+      "displaces": "Cucho Hernández",
+      "vendedor": "Ana",
+      "cierraEn": null,
+      "reasons": [
+        "Proyecta 48.3 pts en 6 jornadas",
+        "100% de probabilidad de ser titular",
+        "8.04 pts/90 tras regresión",
+        "Sale del once Cucho Hernández (+19.1 pts)",
+        "Revalorización esperada +1.9M€ (+39.2%): el precio va por detrás de su rendimiento",
+        "Más irregular que 3 de cada 4 (desviación 9.0)"
+      ],
+      "precioReal": true
+    },
+    {
+      "id": 9015,
+      "name": "Mariano",
+      "position": "FW",
+      "team": "Alavés",
+      "teamId": 8,
+      "price": 3740000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 48,
+      "matches": 6,
+      "projectedPoints": 42.2,
+      "startProbability": 1,
+      "per90": 7.04,
+      "volatility": 5.5,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 16,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 10,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 12,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 8,
+      "quality": 6.1,
+      "reval": {
+        "precioJusto": 9924803,
+        "esperada": 1721317,
+        "porcentaje": 46
+      },
+      "valorPuntos": 4374061,
+      "action": "buy",
+      "askingPrice": 4186345,
+      "maxBid": 6095378,
+      "suggestedBid": 5809000,
+      "displaces": "Cucho Hernández",
+      "vendedor": "Sanabria",
+      "cierraEn": null,
+      "reasons": [
+        "Proyecta 42.2 pts en 6 jornadas",
+        "100% de probabilidad de ser titular",
+        "7.04 pts/90 tras regresión",
+        "Sale del once Cucho Hernández (+13.0 pts)",
+        "Revalorización esperada +1.7M€ (+46%): el precio va por detrás de su rendimiento",
+        "Más irregular que 3 de cada 4 (desviación 5.5)"
+      ],
+      "precioReal": true
+    },
+    {
+      "id": 9028,
+      "name": "Courtois",
+      "position": "GK",
+      "team": "Real Madrid",
+      "teamId": 1,
+      "price": 6570000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 21,
+      "matches": 6,
+      "projectedPoints": 25.6,
+      "startProbability": 1,
+      "per90": 4.26,
+      "volatility": 2.3,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 8,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 4.9,
+      "quality": 0,
+      "reval": {
+        "precioJusto": 6674744,
+        "esperada": 46928,
+        "porcentaje": 0.7
+      },
+      "valorPuntos": 0,
+      "action": "avoid",
+      "askingPrice": 6570000,
+      "maxBid": 46928,
+      "suggestedBid": null,
+      "displaces": null,
+      "vendedor": null,
+      "cierraEn": null,
+      "reasons": [
+        "Proyecta 25.6 pts en 6 jornadas",
+        "100% de probabilidad de ser titular",
+        "4.26 pts/90 tras regresión",
+        "No entraría en tu once: su valor está solo en la revalorización"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9034,
+      "name": "Unai Simón",
+      "position": "GK",
+      "team": "Athletic",
+      "teamId": 16,
+      "price": 7590000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 27,
+      "matches": 5,
+      "projectedPoints": 32.5,
+      "startProbability": 1,
+      "per90": 5.42,
+      "volatility": 6.2,
+      "rounds": [
+        {
+          "r": 1,
+          "p": -4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 12,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 7,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 9,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 4.9,
+      "quality": 6.7,
+      "reval": {
+        "precioJusto": 8453546,
+        "esperada": 376328,
+        "porcentaje": 5
+      },
+      "valorPuntos": 614214,
+      "action": "avoid",
+      "askingPrice": 7590000,
+      "maxBid": 990542,
+      "suggestedBid": null,
+      "displaces": "Agirrezabala",
+      "vendedor": null,
+      "cierraEn": null,
+      "reasons": [
+        "Proyecta 32.5 pts en 6 jornadas",
+        "100% de probabilidad de ser titular",
+        "5.42 pts/90 tras regresión",
+        "Sale del once Agirrezabala (+1.8 pts)",
+        "Más irregular que 3 de cada 4 (desviación 6.2)"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9062,
+      "name": "Hugo Duro",
+      "position": "FW",
+      "team": "Valencia",
+      "teamId": 15,
+      "price": 5880000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 14,
+      "matches": 6,
+      "projectedPoints": 23.9,
+      "startProbability": 1,
+      "per90": 3.98,
+      "volatility": 0.5,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 4.9,
+      "quality": 1.7,
+      "reval": {
+        "precioJusto": 6148239,
+        "esperada": 119186,
+        "porcentaje": 2
+      },
+      "valorPuntos": 0,
+      "action": "avoid",
+      "askingPrice": 5880000,
+      "maxBid": 119186,
+      "suggestedBid": null,
+      "displaces": null,
+      "vendedor": null,
+      "cierraEn": null,
+      "reasons": [
+        "Proyecta 23.9 pts en 6 jornadas",
+        "100% de probabilidad de ser titular",
+        "3.98 pts/90 tras regresión",
+        "No entraría en tu once: su valor está solo en la revalorización"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9067,
+      "name": "Chupete",
+      "position": "FW",
+      "team": "Málaga",
+      "teamId": 17,
+      "price": 4860000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 8,
+      "matches": 6,
+      "projectedPoints": 19.6,
+      "startProbability": 1,
+      "per90": 3.27,
+      "volatility": 3.9,
+      "rounds": [
+        {
+          "r": 1,
+          "p": -2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 9,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 1,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 0,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": -1,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 1,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 4.9,
+      "quality": 1.3,
+      "reval": {
+        "precioJusto": 5274409,
+        "esperada": 182078,
+        "porcentaje": 3.7
+      },
+      "valorPuntos": 0,
+      "action": "avoid",
+      "askingPrice": 4860000,
+      "maxBid": 182078,
+      "suggestedBid": null,
+      "displaces": null,
+      "vendedor": null,
+      "cierraEn": null,
+      "reasons": [
+        "Proyecta 19.6 pts en 6 jornadas",
+        "100% de probabilidad de ser titular",
+        "3.27 pts/90 tras regresión",
+        "No entraría en tu once: su valor está solo en la revalorización"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9001,
+      "name": "Lamine Yamal",
+      "position": "FW",
+      "team": "Barcelona",
+      "teamId": 0,
+      "price": 22200000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 76,
+      "matches": 6,
+      "projectedPoints": 62.9,
+      "startProbability": 1,
+      "per90": 10.49,
+      "volatility": 6.2,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 7,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 18,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 17,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 17,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 14,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 4.9,
+      "quality": 9.1,
+      "reval": {
+        "precioJusto": 14177862,
+        "esperada": -3933618,
+        "porcentaje": -17.7
+      },
+      "valorPuntos": 11318413,
+      "action": "avoid",
+      "askingPrice": 24017121,
+      "maxBid": 11318413,
+      "suggestedBid": null,
+      "displaces": "Cucho Hernández",
+      "vendedor": "Carlos",
+      "cierraEn": null,
+      "reasons": [
+        "Gran jugador (9.1 de calidad), pero piden 12.7M€ más de lo que te aporta a TI",
+        "Proyecta 62.9 pts en 6 jornadas",
+        "100% de probabilidad de ser titular",
+        "10.49 pts/90 tras regresión",
+        "Sale del once Cucho Hernández (+33.7 pts)",
+        "Riesgo de bajada -3.9M€ (-17.7%)",
+        "Más irregular que 3 de cada 4 (desviación 6.2)"
+      ],
+      "precioReal": true
+    },
+    {
+      "id": 9035,
+      "name": "Vlachodimos",
+      "position": "GK",
+      "team": "Sevilla",
+      "teamId": 10,
+      "price": 7420000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 26,
+      "matches": 6,
+      "projectedPoints": 28.9,
+      "startProbability": 1,
+      "per90": 4.81,
+      "volatility": 3.7,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 6,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": -2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 6,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 9,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 4,
+      "quality": 1.7,
+      "reval": {
+        "precioJusto": 7520359,
+        "esperada": 44993,
+        "porcentaje": 0.6
+      },
+      "valorPuntos": 0,
+      "action": "avoid",
+      "askingPrice": 7420000,
+      "maxBid": 44993,
+      "suggestedBid": null,
+      "displaces": null,
+      "vendedor": null,
+      "cierraEn": null,
+      "reasons": [
+        "Proyecta 28.9 pts en 6 jornadas",
+        "100% de probabilidad de ser titular",
+        "4.81 pts/90 tras regresión",
+        "No entraría en tu once: su valor está solo en la revalorización"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9070,
+      "name": "Guruzeta",
+      "position": "FW",
+      "team": "Athletic",
+      "teamId": 16,
+      "price": 5030000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 9,
+      "matches": 4,
+      "projectedPoints": 19.3,
+      "startProbability": 0.75,
+      "per90": 4.29,
+      "volatility": 0.5,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 0,
+          "m": 0,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 4,
+      "quality": 0.9,
+      "reval": {
+        "precioJusto": 5214465,
+        "esperada": 82169,
+        "porcentaje": 1.6
+      },
+      "valorPuntos": 0,
+      "action": "avoid",
+      "askingPrice": 5030000,
+      "maxBid": 82169,
+      "suggestedBid": null,
+      "displaces": null,
+      "vendedor": null,
+      "cierraEn": null,
+      "reasons": [
+        "Proyecta 19.3 pts en 6 jornadas",
+        "75% de probabilidad de ser titular",
+        "4.29 pts/90 tras regresión",
+        "No entraría en tu once: su valor está solo en la revalorización"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9029,
+      "name": "Oblak",
+      "position": "GK",
+      "team": "Atlético",
+      "teamId": 5,
+      "price": 7250000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 25,
+      "matches": 6,
+      "projectedPoints": 27.3,
+      "startProbability": 1,
+      "per90": 4.54,
+      "volatility": 3.3,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 9,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 5,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": -1,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 5,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 0,
+      "quality": 0.8,
+      "reval": {
+        "precioJusto": 7110427,
+        "esperada": -63140,
+        "porcentaje": -0.9
+      },
+      "valorPuntos": 0,
+      "action": "avoid",
+      "askingPrice": 7250000,
+      "maxBid": 0,
+      "suggestedBid": null,
+      "displaces": null,
+      "vendedor": null,
+      "cierraEn": null,
+      "reasons": [
+        "Proyecta 27.3 pts en 6 jornadas",
+        "100% de probabilidad de ser titular",
+        "4.54 pts/90 tras regresión",
+        "No entraría en tu once: su valor está solo en la revalorización"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9036,
+      "name": "Szczesny",
+      "position": "GK",
+      "team": "Barcelona",
+      "teamId": 0,
+      "price": 2660000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": -2,
+      "matches": 1,
+      "projectedPoints": 5,
+      "startProbability": 0.22,
+      "per90": 3.8,
+      "volatility": 0,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 0,
+          "m": 0,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 0,
+          "m": 0,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 0,
+          "m": 0,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 0,
+          "m": 0,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 0,
+          "m": 0,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": -2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 0,
+      "quality": 0,
+      "reval": {
+        "precioJusto": 1426600,
+        "esperada": -242539,
+        "porcentaje": -9.1
+      },
+      "valorPuntos": 0,
+      "action": "avoid",
+      "askingPrice": 2660000,
+      "maxBid": 0,
+      "suggestedBid": null,
+      "displaces": null,
+      "vendedor": null,
+      "cierraEn": null,
+      "reasons": [
+        "Proyecta 5.0 pts en 6 jornadas",
+        "22% de probabilidad de ser titular",
+        "3.80 pts/90 tras regresión",
+        "No entraría en tu once: su valor está solo en la revalorización"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9059,
+      "name": "Oyarzabal",
+      "position": "FW",
+      "team": "Real Sociedad",
+      "teamId": 9,
+      "price": 7070000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 21,
+      "matches": 6,
+      "projectedPoints": 27.2,
+      "startProbability": 1,
+      "per90": 4.54,
+      "volatility": 3,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 9,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 0,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 0,
+      "quality": 2.2,
+      "reval": {
+        "precioJusto": 6835722,
+        "esperada": -106382,
+        "porcentaje": -1.5
+      },
+      "valorPuntos": 0,
+      "action": "avoid",
+      "askingPrice": 7070000,
+      "maxBid": 0,
+      "suggestedBid": null,
+      "displaces": null,
+      "vendedor": null,
+      "cierraEn": null,
+      "reasons": [
+        "Proyecta 27.2 pts en 6 jornadas",
+        "100% de probabilidad de ser titular",
+        "4.54 pts/90 tras regresión",
+        "No entraría en tu once: su valor está solo en la revalorización"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9065,
+      "name": "Ayoze",
+      "position": "FW",
+      "team": "Villarreal",
+      "teamId": 7,
+      "price": 7070000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 21,
+      "matches": 6,
+      "projectedPoints": 28.1,
+      "startProbability": 1,
+      "per90": 4.68,
+      "volatility": 1.2,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 5,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 5,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 0,
+      "quality": 3,
+      "reval": {
+        "precioJusto": 7017139,
+        "esperada": -23836,
+        "porcentaje": -0.3
+      },
+      "valorPuntos": 0,
+      "action": "avoid",
+      "askingPrice": 7070000,
+      "maxBid": 0,
+      "suggestedBid": null,
+      "displaces": null,
+      "vendedor": null,
+      "cierraEn": null,
+      "reasons": [
+        "Proyecta 28.1 pts en 6 jornadas",
+        "100% de probabilidad de ser titular",
+        "4.68 pts/90 tras regresión",
+        "No entraría en tu once: su valor está solo en la revalorización"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9068,
+      "name": "Julián Álvarez",
+      "position": "FW",
+      "team": "Atlético",
+      "teamId": 5,
+      "price": 4010000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 3,
+      "matches": 2,
+      "projectedPoints": 8.9,
+      "startProbability": 0.31,
+      "per90": 4.78,
+      "volatility": 2.1,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 0,
+          "m": 0,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 0,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 0,
+          "m": 0,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 0,
+          "m": 0,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 0,
+          "m": 0,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 0,
+      "quality": 0,
+      "reval": {
+        "precioJusto": 3071670,
+        "esperada": -238628,
+        "porcentaje": -6
+      },
+      "valorPuntos": 0,
+      "action": "avoid",
+      "askingPrice": 4010000,
+      "maxBid": 0,
+      "suggestedBid": null,
+      "displaces": null,
+      "vendedor": null,
+      "cierraEn": null,
+      "reasons": [
+        "Proyecta 8.9 pts en 6 jornadas",
+        "31% de probabilidad de ser titular",
+        "4.78 pts/90 tras regresión",
+        "No entraría en tu once: su valor está solo en la revalorización"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9071,
+      "name": "Pere Milla",
+      "position": "FW",
+      "team": "Espanyol",
+      "teamId": 18,
+      "price": 5030000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 9,
+      "matches": 4,
+      "projectedPoints": 16.8,
+      "startProbability": 0.65,
+      "per90": 4.31,
+      "volatility": 0.5,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 0,
+          "m": 0,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 0,
+          "m": 0,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 0,
+      "quality": 0.4,
+      "reval": {
+        "precioJusto": 4703025,
+        "esperada": -149746,
+        "porcentaje": -3
+      },
+      "valorPuntos": 0,
+      "action": "avoid",
+      "askingPrice": 5030000,
+      "maxBid": 0,
+      "suggestedBid": null,
+      "displaces": null,
+      "vendedor": null,
+      "cierraEn": null,
+      "reasons": [
+        "Proyecta 16.8 pts en 6 jornadas",
+        "65% de probabilidad de ser titular",
+        "4.31 pts/90 tras regresión",
+        "No entraría en tu once: su valor está solo en la revalorización"
+      ],
+      "precioReal": false
+    }
+  ],
+  "squad": [
+    {
+      "id": 9056,
+      "name": "Angeliño",
+      "position": "DF",
+      "team": "Deportivo",
+      "teamId": 3,
+      "price": 1480000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": -6,
+      "matches": 1,
+      "projectedPoints": 3,
+      "startProbability": 0.22,
+      "per90": 2.27,
+      "volatility": 0,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 0,
+          "m": 0,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 0,
+          "m": 0,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 0,
+          "m": 0,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 0,
+          "m": 0,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 0,
+          "m": 0,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": -6,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 8,
+      "quality": 0,
+      "reval": {
+        "precioJusto": 1528584,
+        "esperada": 7843,
+        "porcentaje": 0.5
+      },
+      "action": "sell",
+      "valueToMe": 7843,
+      "inXI": false,
+      "reasons": [
+        "Sin él tu mejor once no baja: no aporta nada al equipo que pones",
+        "El mercado paga 1.5M€ por encima de su valor para ti",
+        "Minutos a la baja (22%)"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9063,
+      "name": "Raúl García",
+      "position": "MF",
+      "team": "Osasuna",
+      "teamId": 6,
+      "price": 6060000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 18,
+      "matches": 6,
+      "projectedPoints": 26.5,
+      "startProbability": 1,
+      "per90": 4.41,
+      "volatility": 0.6,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 7.5,
+      "quality": 0.6,
+      "reval": {
+        "precioJusto": 6149779,
+        "esperada": 40236,
+        "porcentaje": 0.7
+      },
+      "action": "hold",
+      "valueToMe": 4178324,
+      "inXI": true,
+      "reasons": [
+        "El mercado paga 1.9M€ por encima de su valor para ti"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9069,
+      "name": "Enes Ünal",
+      "position": "FW",
+      "team": "Getafe",
+      "teamId": 13,
+      "price": 7240000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 22,
+      "matches": 6,
+      "projectedPoints": 27.8,
+      "startProbability": 1,
+      "per90": 4.63,
+      "volatility": 3.6,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 11,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 7.5,
+      "quality": 2.6,
+      "reval": {
+        "precioJusto": 6949767,
+        "esperada": -132037,
+        "porcentaje": -1.8
+      },
+      "action": "sell",
+      "valueToMe": 0,
+      "inXI": false,
+      "reasons": [
+        "Sin él tu mejor once no baja: no aporta nada al equipo que pones",
+        "El mercado paga 7.2M€ por encima de su valor para ti"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9055,
+      "name": "Manu Hernando",
+      "position": "DF",
+      "team": "Racing",
+      "teamId": 4,
+      "price": 4540000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 12,
+      "matches": 5,
+      "projectedPoints": 14.8,
+      "startProbability": 0.81,
+      "per90": 3.05,
+      "volatility": 4,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 8,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 1,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 0,
+          "m": 0,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": -3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 6,
+      "quality": 0.5,
+      "reval": {
+        "precioJusto": 4436379,
+        "esperada": -46921,
+        "porcentaje": -1
+      },
+      "action": "sell",
+      "valueToMe": 198425,
+      "inXI": true,
+      "reasons": [
+        "El mercado paga 4.3M€ por encima de su valor para ti"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9030,
+      "name": "Agirrezabala",
+      "position": "GK",
+      "team": "Racing",
+      "teamId": 4,
+      "price": 7930000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 29,
+      "matches": 6,
+      "projectedPoints": 30.7,
+      "startProbability": 1,
+      "per90": 5.12,
+      "volatility": 2.3,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 9,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 6,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 5,
+      "quality": 5,
+      "reval": {
+        "precioJusto": 7987229,
+        "esperada": 25702,
+        "porcentaje": 0.3
+      },
+      "action": "hold",
+      "valueToMe": 496994,
+      "inXI": true,
+      "reasons": [
+        "El mercado paga 7.4M€ por encima de su valor para ti"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9033,
+      "name": "Dimitrievski",
+      "position": "GK",
+      "team": "Valencia",
+      "teamId": 15,
+      "price": 7590000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 27,
+      "matches": 6,
+      "projectedPoints": 29.3,
+      "startProbability": 1,
+      "per90": 4.88,
+      "volatility": 2.3,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 5,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 1,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 7,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 7,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 5,
+      "quality": 2.5,
+      "reval": {
+        "precioJusto": 7629420,
+        "esperada": 17714,
+        "porcentaje": 0.2
+      },
+      "action": "hold",
+      "valueToMe": 17714,
+      "inXI": false,
+      "reasons": [
+        "Sin él tu mejor once no baja: no aporta nada al equipo que pones",
+        "El mercado paga 7.6M€ por encima de su valor para ti"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9052,
+      "name": "Lejeune",
+      "position": "DF",
+      "team": "Rayo",
+      "teamId": 2,
+      "price": 3860000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 8,
+      "matches": 6,
+      "projectedPoints": 15.2,
+      "startProbability": 1,
+      "per90": 2.53,
+      "volatility": 3.1,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 0,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 1,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 5,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": -4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 5,
+      "quality": 1.1,
+      "reval": {
+        "precioJusto": 4536219,
+        "esperada": 289478,
+        "porcentaje": 7.5
+      },
+      "action": "hold",
+      "valueToMe": 623686,
+      "inXI": true,
+      "reasons": [
+        "El mercado paga 3.2M€ por encima de su valor para ti"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9053,
+      "name": "Bretones",
+      "position": "DF",
+      "team": "Osasuna",
+      "teamId": 6,
+      "price": 3860000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 8,
+      "matches": 6,
+      "projectedPoints": 14.2,
+      "startProbability": 1,
+      "per90": 2.36,
+      "volatility": 3.5,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": -2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": -4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 5,
+      "quality": 0,
+      "reval": {
+        "precioJusto": 4290480,
+        "esperada": 187722,
+        "porcentaje": 4.9
+      },
+      "action": "hold",
+      "valueToMe": 187722,
+      "inXI": false,
+      "reasons": [
+        "Sin él tu mejor once no baja: no aporta nada al equipo que pones",
+        "El mercado paga 3.7M€ por encima de su valor para ti"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9051,
+      "name": "Yuri",
+      "position": "DF",
+      "team": "Athletic",
+      "teamId": 16,
+      "price": 3690000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 7,
+      "matches": 4,
+      "projectedPoints": 16.3,
+      "startProbability": 0.82,
+      "per90": 3.29,
+      "volatility": 5.9,
+      "rounds": [
+        {
+          "r": 1,
+          "p": -7,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 0,
+          "m": 0,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 6,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 5,
+      "quality": 1.6,
+      "reval": {
+        "precioJusto": 4811903,
+        "esperada": 462237,
+        "porcentaje": 12.5
+      },
+      "action": "hold",
+      "valueToMe": 1171380,
+      "inXI": true,
+      "reasons": [
+        "El mercado paga 2.5M€ por encima de su valor para ti",
+        "Se espera que suba 0.5M€: quizá conviene esperar"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9057,
+      "name": "Valverde",
+      "position": "MF",
+      "team": "Real Madrid",
+      "teamId": 1,
+      "price": 7930000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 29,
+      "matches": 6,
+      "projectedPoints": 33.3,
+      "startProbability": 1,
+      "per90": 5.55,
+      "volatility": 1.3,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 6,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 6,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 6,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 5,
+      "quality": 1.9,
+      "reval": {
+        "precioJusto": 8093766,
+        "esperada": 73275,
+        "porcentaje": 0.9
+      },
+      "action": "hold",
+      "valueToMe": 6495500,
+      "inXI": true,
+      "reasons": [
+        "El mercado paga 1.4M€ por encima de su valor para ti"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9060,
+      "name": "Isco",
+      "position": "MF",
+      "team": "Betis",
+      "teamId": 12,
+      "price": 7080000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 24,
+      "matches": 6,
+      "projectedPoints": 30.9,
+      "startProbability": 1,
+      "per90": 5.16,
+      "volatility": 1.5,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 5,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 5,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 6,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 5,
+      "quality": 1.3,
+      "reval": {
+        "precioJusto": 7421537,
+        "esperada": 151643,
+        "porcentaje": 2.1
+      },
+      "action": "hold",
+      "valueToMe": 5784015,
+      "inXI": true,
+      "reasons": [
+        "El mercado paga 1.3M€ por encima de su valor para ti"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9064,
+      "name": "Moriba",
+      "position": "MF",
+      "team": "Celta",
+      "teamId": 14,
+      "price": 5550000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 15,
+      "matches": 6,
+      "projectedPoints": 25.5,
+      "startProbability": 1,
+      "per90": 4.26,
+      "volatility": 2.3,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 0,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 0,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 6,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 5,
+      "quality": 0,
+      "reval": {
+        "precioJusto": 5879770,
+        "esperada": 145958,
+        "porcentaje": 2.6
+      },
+      "action": "hold",
+      "valueToMe": 3966792,
+      "inXI": true,
+      "reasons": [
+        "El mercado paga 1.6M€ por encima de su valor para ti"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9061,
+      "name": "Aspas",
+      "position": "FW",
+      "team": "Celta",
+      "teamId": 14,
+      "price": 8260000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 28,
+      "matches": 6,
+      "projectedPoints": 31.6,
+      "startProbability": 1,
+      "per90": 5.26,
+      "volatility": 2.7,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 10,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 5,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 3,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 5,
+      "quality": 4.3,
+      "reval": {
+        "precioJusto": 7733679,
+        "esperada": -240959,
+        "porcentaje": -2.9
+      },
+      "action": "hold",
+      "valueToMe": 1279963,
+      "inXI": true,
+      "reasons": [
+        "El mercado paga 7.0M€ por encima de su valor para ti"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9058,
+      "name": "Vinicius",
+      "position": "FW",
+      "team": "Real Madrid",
+      "teamId": 1,
+      "price": 8260000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 28,
+      "matches": 6,
+      "projectedPoints": 30.8,
+      "startProbability": 1,
+      "per90": 5.13,
+      "volatility": 4.2,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 11,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 5,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 4,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 6,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": -2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 5,
+      "quality": 3.9,
+      "reval": {
+        "precioJusto": 7574132,
+        "esperada": -315604,
+        "porcentaje": -3.8
+      },
+      "action": "hold",
+      "valueToMe": 1019456,
+      "inXI": true,
+      "reasons": [
+        "El mercado paga 7.2M€ por encima de su valor para ti"
+      ],
+      "precioReal": false
+    },
+    {
+      "id": 9066,
+      "name": "Cucho Hernández",
+      "position": "FW",
+      "team": "Betis",
+      "teamId": 12,
+      "price": 7410000,
+      "priceDelta": 0,
+      "status": "ok",
+      "seasonPoints": 23,
+      "matches": 6,
+      "projectedPoints": 29.2,
+      "startProbability": 1,
+      "per90": 4.87,
+      "volatility": 3.5,
+      "rounds": [
+        {
+          "r": 1,
+          "p": 6,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 2,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 3,
+          "p": 1,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 4,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 5,
+          "p": 10,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        },
+        {
+          "r": 6,
+          "p": 2,
+          "m": 90,
+          "h": null,
+          "o": null,
+          "g": 0,
+          "a": 0,
+          "hl": null,
+          "vl": null,
+          "hid": null,
+          "vid": null,
+          "hg": null,
+          "vg": null,
+          "y": 0,
+          "rd": false,
+          "og": 0,
+          "ps": 0,
+          "pm": 0
+        }
+      ],
+      "splitLocal": {
+        "casa": null,
+        "casaPJ": 0,
+        "fuera": null,
+        "fueraPJ": 0
+      },
+      "foto": null,
+      "escudo": null,
+      "priceHistory": null,
+      "score": 5,
+      "quality": 3.5,
+      "reval": {
+        "precioJusto": 7245915,
+        "esperada": -74287,
+        "porcentaje": -1
+      },
+      "action": "hold",
+      "valueToMe": 483547,
+      "inXI": true,
+      "reasons": [
+        "El mercado paga 6.9M€ por encima de su valor para ti"
+      ],
+      "precioReal": false
+    }
+  ]
+};
+
+const eur = (n) => {
+  if (n == null) return '—';
+  if (Math.abs(n) >= 1e6) return (n/1e6).toFixed(1).replace('.',',') + 'M';
+  return Math.round(n/1000) + 'k';
+};
+const esc = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const scoreClass = (s) => s >= 7 ? 's-good' : s >= 5 ? 's-mid' : 's-bad';
+
+/** Cuánto queda para que cierre la subasta. */
+function cuandoCierra(ms){
+  const falta = ms - Date.now();
+  if (falta <= 0) return 'ya cerrada';
+  const h = Math.floor(falta / 3600000);
+  const m = Math.floor((falta % 3600000) / 60000);
+  if (h >= 24) return 'en ' + Math.floor(h / 24) + ' día' + (h >= 48 ? 's' : '');
+  return h > 0 ? 'en ' + h + 'h ' + m + 'm' : 'en ' + m + ' minutos';
+}
+
+const STATUS_ES = { ok:'', doubt:'duda', injured:'lesionado', suspended:'sancionado', out:'baja' };
+
+/**
+ * Avatar del jugador con su escudo. Si la imagen no carga (patrón de URL
+ * cambiado, o la vista previa de Claude que bloquea imágenes externas),
+ * onerror deja a la vista las iniciales que hay debajo. Nunca se rompe.
+ */
+/**
+ * URLs del CDN de Biwenger, comprobadas contra el servidor real. Se construyen
+ * aquí además de en el backend para que la app funcione aunque el JSON venga
+ * de un snapshot antiguo con el patrón equivocado.
+ */
+const CDN_BIWENGER = 'https://cdn.biwenger.com';
+const fotoDe = (p) => {
+  if (p.foto && p.foto.includes('/i/p/')) return p.foto;
+  return p.id ? CDN_BIWENGER + '/i/p/' + p.id + '.png' : null;
+};
+const escudoDe = (p) => {
+  if (p.escudo && p.escudo.includes('/i/t/')) return p.escudo;
+  return p.teamId ? CDN_BIWENGER + '/i/t/' + p.teamId + '.png' : p.escudo || null;
+};
+
+function avatar(p){
+  const ini = esc(p.name.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase());
+  const foto = fotoDe(p);
+  const escudo = escudoDe(p);
+  const img = foto
+    ? '<img src="' + esc(foto) + '" alt="" loading="lazy" onerror="this.remove()">'
+    : '';
+  const esc2 = escudo
+    ? '<span class="badge"><img src="' + esc(escudo) + '" alt="" loading="lazy" ' +
+      'onerror="this.parentElement.remove()"></span>'
+    : '';
+  return '<div class="avatar"><span class="ini">' + ini + '</span>' + img + esc2 + '</div>';
+}
+
+const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+/**
+ * Los datos de cada gráfica, para poder consultarlos al mover el dedo sin
+ * volcar el histórico entero en atributos del HTML.
+ */
+const SERIES_PRECIO = new Map();
+const CHART_W = 320, CHART_H = 82, CHART_PAD = 5;
+
+/**
+ * Evolución del valor de mercado, como la gráfica de Biwenger. Los datos
+ * vienen de la propia API en la ficha del jugador.
+ */
+/**
+ * Código de color de Biwenger: negativo rojo, cero gris, 1-5 naranja,
+ * 6-9 verde, 10 o más azul.
+ */
+function colorPunt(n){
+  if (n < 0) return 'p-neg';
+  if (n === 0) return 'p-zero';
+  if (n <= 5) return 'p-low';
+  if (n <= 9) return 'p-mid';
+  return 'p-high'; // 10 o más: azul
+}
+
+function pastilla(r){
+  if (!r || r.m === 0) return '<span class="pill p-none">–</span>';
+  return '<span class="pill ' + colorPunt(r.p) + '">' + r.p + '</span>';
+}
+
+/** Fila de los últimos seis partidos, con el total de la temporada al lado. */
+function ultimos6(p){
+  const seis = (p.rounds || []).slice(-6);
+  return '<div class="last6">' +
+    '<span class="last6-lbl">Últimas</span>' +
+    seis.map(pastilla).join('') +
+    '<span class="total"><b>' + p.seasonPoints + '</b><span>pts · ' + p.matches + ' PJ</span></span>' +
+  '</div>';
+}
+
+/** Medias en casa y fuera. Solo se muestran si sabemos dónde se jugó. */
+function casaFuera(p){
+  const s = p.splitLocal;
+  if (!s || (s.casa === null && s.fuera === null)){
+    return '<div class="chart-none">Media en casa y fuera: disponible al conectar tu cuenta. ' +
+      'El dato de dónde se jugó cada jornada lo trae la ficha del jugador.</div>';
+  }
+  const celda = (em, val, pj, etq) =>
+    '<div><div class="em">' + em + '</div><b>' +
+    (val === null ? '—' : val.toFixed(1).replace('.', ',')) + '</b>' +
+    '<span>' + etq + (pj ? ' · ' + pj + ' PJ' : '') + '</span></div>';
+  return '<div class="venue">' +
+    celda('🏠', s.casa, s.casaPJ, 'en casa') +
+    celda('✈️', s.fuera, s.fueraPJ, 'fuera') +
+  '</div>';
+}
+
+/* ---- estado de la app ---------------------------------------------- */
+let DATA = EMBEDDED;
+let filterPos = 'ALL';
+let onlyRecommended = false;
+let soloRevaloriza = false;
+let soloDeRivales = false;
+
+function graficaPrecio(p){
+  const h = p.priceHistory;
+  if (!Array.isArray(h) || h.length < 2){
+    return '<div class="chart-none">Evolución del precio: disponible al conectar tu cuenta. ' +
+      'El histórico lo da la ficha del jugador en Biwenger.</div>';
+  }
+
+  SERIES_PRECIO.set(String(p.id), h);
+
+  const xs = h.map(d => d[0]), ys = h.map(d => d[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const rx = (x1 - x0) || 1, ry = (y1 - y0) || 1;
+
+  const px = (x) => CHART_PAD + ((x - x0) / rx) * (CHART_W - CHART_PAD * 2);
+  const py = (y) => CHART_H - CHART_PAD - ((y - y0) / ry) * (CHART_H - CHART_PAD * 2);
+
+  const linea = h.map((d, i) => (i ? 'L' : 'M') + px(d[0]).toFixed(1) + ' ' + py(d[1]).toFixed(1)).join(' ');
+  const area = linea + ' L' + px(x1).toFixed(1) + ' ' + (CHART_H - CHART_PAD) +
+               ' L' + px(x0).toFixed(1) + ' ' + (CHART_H - CHART_PAD) + ' Z';
+
+  const sube = ys[ys.length - 1] >= ys[0];
+  const color = sube ? 'var(--good)' : 'var(--bad)';
+  const dif = ys[ys.length - 1] - ys[0];
+  const pct = ys[0] ? (dif / Math.abs(ys[0])) * 100 : 0;
+  const fecha = (ms) => { const d = new Date(ms); return MESES[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2); };
+
+  const resumen = (dif >= 0 ? '+' : '') + eur(dif) + '€ (' + (pct >= 0 ? '+' : '') + pct.toFixed(0) + '%)';
+
+  return '<div class="chart" data-chart="' + p.id + '">' +
+    '<div class="chart-hd">' +
+      '<span>Valor de mercado · ' + fecha(x0) + ' a ' + fecha(x1) + '</span>' +
+      '<b class="chart-lectura" data-base="' + esc(resumen) + '" style="color:' + color + '">' +
+        resumen + '</b>' +
+    '</div>' +
+    '<div class="chart-box">' +
+      '<svg viewBox="0 0 ' + CHART_W + ' ' + CHART_H + '" preserveAspectRatio="none" role="img" ' +
+        'aria-label="Evolución del valor de mercado">' +
+        '<path d="' + area + '" fill="' + color + '" opacity="0.12"></path>' +
+        '<path d="' + linea + '" fill="none" stroke="' + color + '" stroke-width="1.6" ' +
+          'stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></path>' +
+      '</svg>' +
+      '<div class="chart-cursor"></div>' +
+      '<div class="chart-dot" style="background:' + color + '"></div>' +
+    '</div>' +
+    '<div class="chart-hd"><span>mín ' + eur(y0) + '€</span><span>máx ' + eur(y1) + '€</span></div>' +
+  '</div>';
+}
+
+/**
+ * Lee la gráfica en el punto donde está el dedo o el ratón. Se calcula la
+ * posición relativa dentro de la caja y se busca el día más cercano, en vez de
+ * interpolar: así el número que enseña es un precio que existió de verdad.
+ */
+function moverGrafica(caja, clientX){
+  const cont = caja.closest('[data-chart]');
+  if (!cont) return;
+  const serie = SERIES_PRECIO.get(cont.dataset.chart);
+  if (!serie || serie.length < 2) return;
+
+  const r = caja.getBoundingClientRect();
+  if (!r.width) return;
+  const ratio = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+
+  const xs = serie.map(d => d[0]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const objetivo = x0 + ratio * (x1 - x0);
+
+  let mejor = 0, dist = Infinity;
+  for (let i = 0; i < serie.length; i++) {
+    const d = Math.abs(serie[i][0] - objetivo);
+    if (d < dist) { dist = d; mejor = i; }
+  }
+  const [ms, precio] = serie[mejor];
+
+  const ys = serie.map(d => d[1]);
+  const y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const ry = (y1 - y0) || 1;
+  const rx = (x1 - x0) || 1;
+
+  // Misma proyección que el SVG, pero en píxeles de la caja.
+  const fx = (CHART_PAD + ((ms - x0) / rx) * (CHART_W - CHART_PAD * 2)) / CHART_W * r.width;
+  const fy = (CHART_H - CHART_PAD - ((precio - y0) / ry) * (CHART_H - CHART_PAD * 2)) / CHART_H * r.height;
+
+  const cursor = caja.querySelector('.chart-cursor');
+  const punto = caja.querySelector('.chart-dot');
+  if (cursor) cursor.style.left = fx.toFixed(1) + 'px';
+  if (punto){ punto.style.left = fx.toFixed(1) + 'px'; punto.style.top = fy.toFixed(1) + 'px'; }
+  caja.classList.add('activo');
+
+  const lectura = cont.querySelector('.chart-lectura');
+  if (lectura){
+    const d = new Date(ms);
+    const dia = d.getDate() + ' ' + MESES[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2);
+    lectura.innerHTML = eur(precio) + '€ <span class="chart-fecha">' + dia + '</span>';
+  }
+}
+
+function soltarGrafica(caja){
+  caja.classList.remove('activo');
+  const cont = caja.closest('[data-chart]');
+  const lectura = cont && cont.querySelector('.chart-lectura');
+  if (lectura) lectura.textContent = lectura.dataset.base || '';
+}
+
+/** Medias en casa y fuera. Solo se muestran si sabemos dónde se jugó. */
+function casaFuera(p){
+  const s = p.splitLocal;
+  if (!s || (s.casa === null && s.fuera === null)){
+    return '<div class="chart-none">Media en casa y fuera: disponible al conectar tu cuenta. ' +
+      'El dato de dónde se jugó cada jornada lo trae la ficha del jugador.</div>';
+  }
+  const celda = (em, val, pj, etq) =>
+    '<div><div class="em">' + em + '</div><b>' +
+    (val === null ? '—' : val.toFixed(1).replace('.', ',')) + '</b>' +
+    '<span>' + etq + (pj ? ' · ' + pj + ' PJ' : '') + '</span></div>';
+  return '<div class="venue">' +
+    celda('🏠', s.casa, s.casaPJ, 'en casa') +
+    celda('✈️', s.fuera, s.fueraPJ, 'fuera') +
+  '</div>';
+}
+
+/**
+ * Histórico jornada a jornada, con la misma forma que la pestaña PUNTOS de
+ * Biwenger: escudos con el resultado, barra proporcional coloreada con el
+ * número dentro, y los iconos de eventos a la derecha.
+ *
+ * Si falta el detalle (escudos, resultado, eventos) cada parte se omite sola en
+ * vez de dejar huecos.
+ */
+function historico(p){
+  const rs = p.rounds || [];
+  if (!rs.length) return '';
+
+  const jugadas = rs.filter(r => r.m > 0);
+  const tope = Math.max(10, ...jugadas.map(r => Math.abs(r.p)));
+
+  const escudoId = (url, id) => {
+    const u = url && url.includes('/i/t/') ? url : id ? CDN_BIWENGER + '/i/t/' + id + '.png' : null;
+    return u ? '<img src="' + esc(u) + '" alt="" loading="lazy" onerror="this.remove()">'
+             : '<span class="sh"></span>';
+  };
+
+  const eventos = (r) => {
+    const ic = [];
+    for (let i = 0; i < (r.g || 0); i++) ic.push('⚽');
+    for (let i = 0; i < (r.a || 0); i++) ic.push('➡️');
+    for (let i = 0; i < (r.og || 0); i++) ic.push('🥅');
+    for (let i = 0; i < (r.ps || 0); i++) ic.push('🧤');
+    for (let i = 0; i < (r.pm || 0); i++) ic.push('❌');
+    for (let i = 0; i < (r.y || 0); i++) ic.push('<span class="bw-card bw-y"></span>');
+    if (r.rd) ic.push('<span class="bw-card bw-r"></span>');
+    return ic.slice(0, 4).join('');
+  };
+
+  const filas = [...rs].reverse().map(r => {
+    const jugo = r.m > 0;
+    const ancho = jugo ? Math.max(12, (Math.abs(r.p) / tope) * 100) : 0;
+
+    const partido = (r.hl || r.vl || r.hid || r.vid || r.hg !== null)
+      ? '<span class="bw-m">' + escudoId(r.hl, r.hid) +
+        (r.hg !== null && r.vg !== null ? '<span>' + r.hg + '–' + r.vg + '</span>' : '<span>–</span>') +
+        escudoId(r.vl, r.vid) + '</span>'
+      : (r.o ? '<span class="bw-m"><span>' + (r.h === false ? '✈️ ' : r.h === true ? '🏠 ' : '') +
+               esc(r.o) + '</span></span>' : '');
+
+    const barra = jugo
+      ? '<div class="bw-bar"><div class="bw-fill ' + colorPunt(r.p) + '" style="width:' +
+        ancho.toFixed(0) + '%">' + r.p + '</div></div>'
+      : '<div class="bw-bar"><span class="bw-nd">no jugó</span></div>';
+
+    return '<div class="bw-row">' +
+      '<span class="bw-j">J' + r.r + '</span>' + partido + barra +
+      '<span class="bw-ev">' + (jugo ? eventos(r) : '') + '</span>' +
+    '</div>';
+  }).join('');
+
+  const min = jugadas.reduce((s, r) => s + r.m, 0);
+  return '<div class="bw">' + filas + '</div>' +
+    '<div class="spark-lbl" style="margin:-6px 0 11px">' + jugadas.length + ' partidos · ' +
+    min + ' minutos · ' + p.seasonPoints + ' puntos</div>';
+}
+
+const gyaDe = (p) => {
+  const rs = p.rounds || [];
+  return { g: rs.reduce((s, r) => s + (r.g || 0), 0), a: rs.reduce((s, r) => s + (r.a || 0), 0) };
+};
+
+/**
+ * Comparador uno contra uno. El motor elige por su cuenta a quién desplazarías,
+ * pero eso es su criterio, no el tuyo: igual quieres quitarte de encima a otro.
+ * Aquí eliges tú y se recalcula todo para ESE cambio concreto.
+ */
+function comparador(p){
+  const mios = (DATA.squad || []).slice().sort((a, b) =>
+    a.position === b.position ? b.projectedPoints - a.projectedPoints
+                              : 'GK DF MF FW'.indexOf(a.position) - 'GK DF MF FW'.indexOf(b.position));
+  if (!mios.length) return '';
+
+  const sugerido = mios.find(m => m.name === p.displaces) || mios[0];
+  const opciones = mios.map(m =>
+    '<option value="' + m.id + '"' + (m.id === sugerido.id ? ' selected' : '') + '>' +
+    esc(m.position + ' · ' + m.name) + (m.inXI ? ' (titular)' : '') + '</option>').join('');
+
+  return '<div class="cmp" data-cmp="' + p.id + '">' +
+    '<select class="cmp-sel" data-cmp-sel="' + p.id + '">' + opciones + '</select>' +
+    '<div data-cmp-out="' + p.id + '">' + comparacion(p, sugerido) + '</div>' +
+  '</div>';
+}
+
+/** El cara a cara ya con la pareja elegida. */
+function comparacion(entra, sale){
+  const ge = gyaDe(entra), gs = gyaDe(sale);
+  const lam = DATA.lambda || 1;
+
+  const dPuntos = entra.projectedPoints - sale.projectedPoints;
+  const revalEntra = entra.reval ? Math.max(0, entra.reval.esperada) : 0;
+  const revalSale = sale.reval ? Math.max(0, sale.reval.esperada) : 0;
+  // Techo de ESTE cambio: los puntos que ganas valen delta/lambda, más la
+  // plusvalía que ganas por el que entra y pierdes por el que sale.
+  const techoPar = (dPuntos / lam) * 1e6 + revalEntra - revalSale;
+  const costeNeto = entra.askingPrice - sale.price;
+  const compensa = techoPar > costeNeto;
+
+  const fila = (k, v1, v2, fmt, mayorMejor = true) => {
+    const mejor1 = mayorMejor ? v1 > v2 : v1 < v2;
+    const mejor2 = mayorMejor ? v2 > v1 : v2 < v1;
+    return '<div class="cmp-r">' +
+      '<span class="v1' + (mejor1 ? ' win' : '') + '">' + fmt(v1) + '</span>' +
+      '<span class="k">' + k + '</span>' +
+      '<span class="v2' + (mejor2 ? ' win' : '') + '">' + fmt(v2) + '</span>' +
+    '</div>';
+  };
+  const n1 = (x) => x.toFixed(1).replace('.', ',');
+  const n0 = (x) => String(Math.round(x));
+  const pc = (x) => Math.round(x * 100) + '%';
+  const em = (x) => eur(x) + '€';
+  const pcr = (x) => (x > 0 ? '+' : '') + x + '%';
+
+  return '<div class="cmp-hd">' +
+      '<span class="a">↑ ' + esc(entra.name) + '</span><span class="vs">POR</span>' +
+      '<span class="b">' + esc(sale.name) + ' ↓</span>' +
+    '</div>' +
+    fila('Proy. 6j', entra.projectedPoints, sale.projectedPoints, n1) +
+    fila('Pts temporada', entra.seasonPoints, sale.seasonPoints, n0) +
+    fila('Media', entra.matches ? entra.seasonPoints / entra.matches : 0,
+                 sale.matches ? sale.seasonPoints / sale.matches : 0, n1) +
+    fila('⚽ Goles', ge.g, gs.g, n0) +
+    fila('➡️ Asist.', ge.a, gs.a, n0) +
+    fila('Titular', entra.startProbability, sale.startProbability, pc) +
+    fila('Regularidad', entra.volatility, sale.volatility, n1, false) +
+    fila('Valor', entra.price, sale.price, em, false) +
+    (entra.reval && sale.reval
+      ? fila('Revaloriza', entra.reval.porcentaje, sale.reval.porcentaje, pcr) : '') +
+    '<div class="cmp-res">' +
+      'Ganarías <b>' + (dPuntos >= 0 ? '+' : '') + n1(dPuntos) + ' puntos</b> en 6 jornadas' +
+      (costeNeto > 0
+        ? ' y te costaría <b>' + em(costeNeto) + '</b> netos (pagas ' + em(entra.askingPrice) +
+          ', ingresas ' + em(sale.price) + ').'
+        : ' y además <b>ingresarías ' + em(-costeNeto) + '</b> netos.') +
+      '<br>Para este cambio concreto, el máximo que deberías pagar es <b>' +
+        em(sale.price + techoPar) + '</b>: ' +
+      (compensa ? '<span class="cmp-ok">compensa</span>' : '<span class="cmp-no">no compensa</span>') +
+      '.' +
+    '</div>';
+}
+
+/** Calidad del jugador frente a si la operación compensa. No es lo mismo. */
+function dosNotas(p){
+  if (p.quality === null || p.quality === undefined) return '';
+  const col = (n) => n >= 7 ? 'var(--good)' : n >= 5 ? 'var(--mid)' : 'var(--bad)';
+  return '<div class="dual">' +
+    '<div><b style="color:' + col(p.quality) + '">' + p.quality.toFixed(1) + '</b>' +
+      '<span>Calidad del jugador</span></div>' +
+    '<div><b style="color:' + col(p.score) + '">' + p.score.toFixed(1) + '</b>' +
+      '<span>¿Compensa el precio?</span></div>' +
+  '</div>';
+}
+
+function stats(p){
+  return '<div class="grid">' +
+    '<div class="stat"><b>' + p.projectedPoints.toFixed(1) + '</b><span>Proy 6j</span></div>' +
+    '<div class="stat"><b>' + Math.round(p.startProbability*100) + '%</b><span>Titular</span></div>' +
+    '<div class="stat"><b>' + p.per90.toFixed(1) + '</b><span>Pts/90</span></div>' +
+    '<div class="stat"><b>' + p.volatility.toFixed(1) + '</b><span>Desv</span></div>' +
+  '</div>';
+}
+
+function marketCard(p){
+  const buy = p.action === 'buy';
+  const st = STATUS_ES[p.status] || '';
+  return '<div class="card" data-id="' + p.id + '">' +
+    '<div class="row">' +
+      avatar(p) +
+      '<div class="score ' + scoreClass(p.score) + '" title="Nota de la operación">' +
+        p.score.toFixed(1) + '</div>' +
+      '<div class="who">' +
+        '<div class="nm">' + esc(p.name) + (st ? ' <span style="color:var(--bad);font-size:.7rem">· ' + st + '</span>' : '') + '</div>' +
+        '<div class="sb"><span class="pos">' + p.position + '</span>' + esc(p.team) +
+          (p.vendedor ? '<span class="seller">👤 ' + esc(p.vendedor) + '</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="money">' +
+        '<div class="ask">' + (p.precioReal === false ? '≈' : '') + eur(p.askingPrice) +
+          (p.reval && p.reval.porcentaje >= 15
+            ? ' <span style="color:var(--good);font-size:.68rem">↑' + p.reval.porcentaje + '%</span>'
+            : p.reval && p.reval.porcentaje <= -15
+            ? ' <span style="color:var(--bad);font-size:.68rem">↓' + Math.abs(p.reval.porcentaje) + '%</span>'
+            : '') +
+        '</div>' +
+        '<div class="verdict ' + (buy ? 'v-buy' : 'v-no') + '">' + (buy ? 'Fichar' : 'Pasar') + '</div>' +
+      '</div>' +
+    '</div>' +
+    ultimos6(p) +
+    '<div class="detail">' +
+      '<div class="calc">' +
+        (p.vendedor
+          ? '<div class="calc-l"><span>Lo vende</span><b>' + esc(p.vendedor) + '</b></div>'
+          : '<div class="calc-l"><span>Procedencia</span><b>Mercado libre</b></div>') +
+        (p.cierraEn ? '<div class="calc-l"><span>Cierra</span><b>' + cuandoCierra(p.cierraEn) + '</b></div>' : '') +
+        '<div class="calc-l"><span>Piden' + (p.precioReal === false ? ' (precio estimado)' : '') +
+          '</span><b>' + eur(p.askingPrice) + '</b></div>' +
+        (p.reval && p.valorPuntos !== null && p.reval.esperada > 0
+          ? '<div class="calc-l"><span>Vale por sus puntos</span><b>' + eur(p.valorPuntos) + '</b></div>' +
+            '<div class="calc-l"><span style="color:var(--good)">+ revalorización esperada</span>' +
+            '<b style="color:var(--good)">' + eur(p.reval.esperada) + ' (' +
+            (p.reval.porcentaje > 0 ? '+' : '') + p.reval.porcentaje + '%)</b></div>'
+          : '') +
+        '<div class="calc-l"><span>Techo (máximo a pagar)</span><b>' + eur(p.maxBid) + '</b></div>' +
+        (p.displaces ? '<div class="calc-l"><span>Desplazaría a</span><b>' + esc(p.displaces) + '</b></div>' : '') +
+        '<div class="calc-sep"></div>' +
+        '<div class="calc-l big"><span>' + (buy ? 'Puja sugerida' : 'No compensa') + '</span><b>' +
+          (buy ? eur(p.suggestedBid) : 'Pide ' + eur(p.askingPrice - p.maxBid) + ' de más') + '</b></div>' +
+        (buy && DATA.economia && p.suggestedBid > DATA.economia.saldo
+          ? '<div class="calc-l"><span style="color:var(--bad)">Te deja en negativo</span><b style="color:var(--bad)">−' +
+            eur(p.suggestedBid - DATA.economia.saldo) + '€</b></div>' : '') +
+      '</div>' +
+      dosNotas(p) + comparador(p) + stats(p) + casaFuera(p) + historico(p) + graficaPrecio(p) +
+      '<ul class="why">' + p.reasons.map(r => '<li>' + esc(r) + '</li>').join('') + '</ul>' +
+    '</div>' +
+  '</div>';
+}
+
+function squadCard(p){
+  const sell = p.action === 'sell';
+  return '<div class="card" data-id="' + p.id + '">' +
+    '<div class="row">' +
+      avatar(p) +
+      '<div class="score ' + (sell ? 's-bad' : 's-good') + '">' + (sell ? '↓' : '✓') + '</div>' +
+      '<div class="who">' +
+        '<div class="nm">' + esc(p.name) + '</div>' +
+        '<div class="sb"><span class="pos">' + p.position + '</span>' + esc(p.team) +
+          (p.inXI ? ' · titular' : ' · suplente') + '</div>' +
+      '</div>' +
+      '<div class="money">' +
+        '<div class="ask">' + eur(p.price) + '</div>' +
+        '<div class="verdict ' + (sell ? 'v-sell' : 'v-hold') + '">' + (sell ? 'Vender' : 'Mantener') + '</div>' +
+      '</div>' +
+    '</div>' +
+    ultimos6(p) +
+    '<div class="detail">' +
+      '<div class="calc">' +
+        '<div class="calc-l"><span>El mercado lo tasa en</span><b>' + eur(p.price) + '</b></div>' +
+        '<div class="calc-l"><span>Vale para ti</span><b>' + eur(p.valueToMe) + '</b></div>' +
+        (p.reval && Math.abs(p.reval.esperada) >= p.price * 0.1
+          ? '<div class="calc-l"><span style="color:' + (p.reval.esperada > 0 ? 'var(--good)' : 'var(--bad)') +
+            '">Precio esperado en 6 jornadas</span><b style="color:' +
+            (p.reval.esperada > 0 ? 'var(--good)' : 'var(--bad)') + '">' +
+            eur(p.price + p.reval.esperada) + '</b></div>'
+          : '') +
+        '<div class="calc-sep"></div>' +
+        '<div class="calc-l big"><span>' + (sell ? 'Excedente si vendes' : 'Mantener') + '</span><b>' +
+          (sell ? eur(p.price - p.valueToMe) : '—') + '</b></div>' +
+      '</div>' +
+      dosNotas(p) + stats(p) + casaFuera(p) + historico(p) + graficaPrecio(p) +
+      '<ul class="why">' + (p.reasons.length ? p.reasons.map(r => '<li>' + esc(r) + '</li>').join('')
+        : '<li>Su aporte al once justifica lo que vale</li>') + '</ul>' +
+      '<button class="simbtn" data-vender="' + p.id + '" aria-pressed="' +
+        (sim.vendidos.includes(p.id)) + '">' +
+        (sim.vendidos.includes(p.id) ? '✓ Vendido · ' + eur(p.price) + '€ al saldo'
+                                     : 'Marcar como vendido (+' + eur(p.price) + '€)') +
+      '</button>' +
+    '</div>' +
+  '</div>';
+}
+
+/** Fichajes que mejoran el once Y dejan dinero. Lo primero que hay que ver. */
+function mejorasGratis(){
+  const g = DATA.freeUpgrades || [];
+  if (!g.length) return '';
+  return '<div class="gratis">' +
+    '<h3>' + g.length + ' mejora' + (g.length > 1 ? 's' : '') + ' que no cuesta' +
+      (g.length > 1 ? 'n' : '') + ' dinero</h3>' +
+    g.map(x =>
+      '<div class="gratis-r"><span class="sale">' + esc(x.sale) + '</span>' +
+      '<span class="swap-ar">→</span><span class="entra">' + esc(x.entra) + '</span>' +
+      '<span class="mas">+' + x.gain.toFixed(1) + ' pts · +' + eur(x.ingreso) + '€</span></div>'
+    ).join('') +
+    '<p>Entran jugadores mejores y más baratos que los que salen: ganas puntos ' +
+      'y además te sobra dinero.</p>' +
+  '</div>';
+}
+
+function renderMarket(){
+  const list = document.getElementById('market-list');
+  let rows = DATA.market.slice();
+  if (filterPos !== 'ALL') rows = rows.filter(p => p.position === filterPos);
+  if (onlyRecommended) rows = rows.filter(p => p.action === 'buy');
+  if (soloRevaloriza) rows = rows.filter(p => p.reval && p.reval.porcentaje >= 15);
+  if (soloDeRivales) rows = rows.filter(p => p.vendedor);
+
+  const buys = rows.filter(p => p.action === 'buy');
+  const rest = rows.filter(p => p.action !== 'buy');
+
+  let html = '';
+  if (buys.length){
+    html += '<div class="section-t">Recomendados (' + buys.length + ')</div>';
+    html += buys.map(marketCard).join('');
+  }
+  if (rest.length){
+    html += '<div class="section-t">Resto del mercado (' + rest.length + ')</div>';
+    html += rest.map(marketCard).join('');
+  }
+  if (!rows.length) html = '<div class="empty">Nada en el mercado con ese filtro.</div>';
+  list.innerHTML = mejorasGratis() + html;
+}
+
+function renderEconomia(){
+  const box = document.getElementById('economia');
+  const a = economiaAjustada();
+  if (!a){ box.innerHTML = ''; return; }
+
+  const modos = { saldo:'solo saldo', saldo25:'saldo + 25% plantilla',
+                  saldo50:'saldo + 50% plantilla', ilimitada:'sin tope' };
+  const inf = (n) => n === null || n === Infinity ? 'sin tope' : eur(n) + '€';
+
+  box.innerHTML =
+    a.avisos.map(x => '<div class="warn">' + esc(x) + '</div>').join('') +
+    '<div class="econ">' +
+      (a.tocado ? '<div class="econ-l"><span style="color:var(--mid)">Ajustado por ti</span>' +
+        '<b style="color:var(--mid)">no es el dato del snapshot</b></div><div class="calc-sep"></div>' : '') +
+      '<div class="econ-l"><span>Saldo</span><b>' + eur(a.saldo) + '€</b></div>' +
+      '<div class="econ-l"><span>Valor de tu plantilla</span><b>' + eur(a.valorPlantilla) + '€</b></div>' +
+      '<div class="econ-l"><span>Margen de deuda (' + esc(modos[a.modo] || a.modo) + ')</span><b>' +
+        inf(a.margen) + '</b></div>' +
+      '<div class="calc-sep"></div>' +
+      '<div class="econ-l"><span><b style="color:var(--ink)">Límite de puja</b></span><b>' +
+        inf(a.limite) + '</b></div>' +
+      (a.exposicion ? '<div class="econ-l"><span>Comprometido si ganas todo</span><b>' +
+        eur(a.exposicion) + '€</b></div>' : '') +
+      '<div class="adj">' +
+        '<label>Ajuste</label>' +
+        '<input id="adj-in" type="number" inputmode="numeric" placeholder="0" value="' +
+          (sim.ajuste || 0) + '">' +
+        '<button id="adj-reset">Reiniciar</button>' +
+      '</div>' +
+      '<div class="hint" style="margin-top:6px">Suma o resta euros si has operado hoy. ' +
+        'Para ventas es más cómodo marcarlas abajo en cada jugador.</div>' +
+    '</div>';
+
+  const inp = document.getElementById('adj-in');
+  inp.addEventListener('change', () => {
+    sim.ajuste = Number(inp.value) || 0;
+    guardarSim(); render();
+  });
+  document.getElementById('adj-reset').addEventListener('click', () => {
+    sim = { ajuste: 0, vendidos: [] };
+    guardarSim(); render();
+  });
+}
+
+function renderSquad(){
+  const sells = DATA.squad.filter(p => p.action === 'sell');
+  const holds = DATA.squad.filter(p => p.action !== 'sell');
+  let html = '';
+  if (sells.length){
+    html += '<div class="section-t">Candidatos a venta (' + sells.length + ')</div>' + sells.map(squadCard).join('');
+  }
+  html += '<div class="section-t">El resto (' + holds.length + ')</div>' + holds.map(squadCard).join('');
+  document.getElementById('squad-list').innerHTML = html;
+}
+
+function renderChanges(){
+  const box = document.getElementById('changes');
+  const ch = (DATA.me.changes || []);
+  const cur = DATA.me.currentPoints;
+
+  if (cur == null){
+    box.innerHTML = '<div class="banner">No he podido leer tu alineación actual, ' +
+      'así que te muestro solo el once óptimo.</div>';
+    return;
+  }
+  const gain = (DATA.me.xiPoints - cur);
+  if (!ch.length || gain <= 0.05){
+    box.innerHTML = '<div class="resumen">Tu alineación ya es la óptima. No toques nada.</div>';
+    return;
+  }
+  box.innerHTML =
+    '<div class="resumen">' + ch.length + ' cambio' + (ch.length>1?'s':'') +
+      ' y ganas <b>' + gain.toFixed(1) + ' puntos</b> en 6 jornadas.</div>' +
+    '<div class="section-t">Haz esto en Biwenger</div>' +
+    ch.map(c =>
+      '<div class="swap">' +
+        '<div class="swap-top">' +
+          '<span class="pos">' + c.position + '</span>' +
+          '<span class="swap-out">' + esc(c.outName) + '</span>' +
+          '<span class="swap-ar">→</span>' +
+          '<span class="swap-in">' + esc(c.inName) + '</span>' +
+        '</div>' +
+        '<div class="swap-meta">Ganas <span class="swap-gain">+' + c.gain.toFixed(1) + '</span> puntos</div>' +
+      '</div>'
+    ).join('');
+}
+
+function renderXI(){
+  const inXI = DATA.squad.filter(p => p.inXI);
+  const order = { GK:0, DF:1, MF:2, FW:3 };
+  const lines = [[],[],[],[]];
+  for (const p of inXI) lines[order[p.position]].push(p);
+  for (const l of lines) l.sort((a,b) => b.projectedPoints - a.projectedPoints);
+
+  const f = DATA.me.formation;
+  const entran = new Set((DATA.me.changes || []).map(c => c.inId));
+  document.getElementById('pitch').innerHTML = lines.reverse().map(line =>
+    '<div class="line">' + line.map(p =>
+      '<div class="pl"' + (entran.has(p.id) ? ' style="outline:2px solid var(--good)"' : '') + '>' +
+      '<div class="n">' + esc(p.name.split(' ').slice(-1)[0]) + '</div>' +
+      '<div class="p">' + p.projectedPoints.toFixed(0) + '</div></div>'
+    ).join('') + '</div>'
+  ).join('');
+
+  document.getElementById('xi-note').innerHTML =
+    'Formación <b>' + f.DF + '-' + f.MF + '-' + f.FW + '</b> · proyecta <b>' +
+    DATA.me.xiPoints.toFixed(0) + ' puntos</b> en 6 jornadas. ' +
+    'El número bajo cada nombre son sus puntos proyectados, y es lo que un fichaje tiene que superar para merecer la pena. ' +
+    'Los recuadrados en verde son los que todavía no tienes puestos.';
+}
+
+function renderChrome(){
+  document.getElementById('m-bal').textContent = eur(DATA.me.balance) + '€';
+  document.getElementById('m-lambda').textContent = DATA.lambda.toFixed(2).replace('.',',');
+  const ea = economiaAjustada();
+  document.getElementById('m-limite').textContent =
+    ea ? (ea.limite === Infinity ? '∞' : eur(ea.limite) + '€') : '—';
+  document.getElementById('m-round').textContent = DATA.round;
+  document.getElementById('simtag').classList.toggle('hidden', !DATA.simulated);
+
+  const n = DATA.market.filter(p => p.action === 'buy').length;
+  const top = DATA.market.filter(p => p.score >= 8).length;
+  document.getElementById('banner').innerHTML = n
+    ? '<b>' + n + ' fichaje' + (n>1?'s':'') + '</b> supera' + (n>1?'n':'') + ' su precio hoy' +
+      (top ? ', ' + top + ' con nota 8 o más' : '') + '. El resto pide más de lo que vale.'
+    : 'Hoy <b>ningún</b> jugador del mercado mejora tu once por lo que piden. No fichar también es una decisión.';
+
+  document.getElementById('foot').innerHTML = DATA.simulated
+    ? 'Jugadores reales de LaLiga 2026/27 con sus puntos reales del sistema AS+Sofascore. ' +
+      'Los precios marcados con ≈ son estimados; el resto son los de Biwenger. ' +
+      'La liga (quién tiene a quién, tu saldo, el mercado de hoy) sí es inventada.'
+    : 'Snapshot de ' + esc(DATA.date) + ' · los precios los actualiza Biwenger de madrugada, ' +
+      'así que solo el saldo se desfasa durante el día · ⚙ para cambiar la fuente';
+}
+
+function render(){ renderChrome(); renderMarket(); renderEconomia(); renderSquad(); renderChanges(); renderXI(); }
+
+/* filtros */
+const chips = [['ALL','Todos'],['GK','POR'],['DF','DEF'],['MF','MED'],['FW','DEL']];
+document.getElementById('chips').innerHTML =
+  chips.map(([v,l]) => '<button class="chip" data-pos="' + v + '" aria-pressed="' + (v==='ALL') + '">' + l + '</button>').join('') +
+  '<button class="chip" data-only="1" aria-pressed="false">Solo recomendados</button>' +
+  '<button class="chip" data-reval="1" aria-pressed="false">Suben de precio</button>' +
+  '<button class="chip" data-vend="1" aria-pressed="false">Los vende un rival</button>';
+
+document.getElementById('chips').addEventListener('click', (e) => {
+  const b = e.target.closest('.chip');
+  if (!b) return;
+  if (b.dataset.only){
+    onlyRecommended = !onlyRecommended;
+    b.setAttribute('aria-pressed', String(onlyRecommended));
+  } else if (b.dataset.reval){
+    soloRevaloriza = !soloRevaloriza;
+    b.setAttribute('aria-pressed', String(soloRevaloriza));
+  } else if (b.dataset.vend){
+    soloDeRivales = !soloDeRivales;
+    b.setAttribute('aria-pressed', String(soloDeRivales));
+  } else {
+    filterPos = b.dataset.pos;
+    document.querySelectorAll('.chip[data-pos]').forEach(c =>
+      c.setAttribute('aria-pressed', String(c.dataset.pos === filterPos)));
+  }
+  renderMarket();
+});
+
+/* tabs */
+document.querySelector('.tabs').addEventListener('click', (e) => {
+  const t = e.target.closest('.tab');
+  if (!t) return;
+  document.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-selected', String(x === t)));
+  for (const v of ['market','squad','xi']){
+    document.getElementById('v-' + v).classList.toggle('hidden', v !== t.dataset.t);
+  }
+  window.scrollTo(0,0);
+});
+
+/* gráfica de precios: leer el valor donde apunta el dedo o el ratón */
+const appEl = document.querySelector('.app');
+appEl.addEventListener('pointermove', (e) => {
+  const caja = e.target.closest('.chart-box');
+  if (caja) moverGrafica(caja, e.clientX);
+});
+appEl.addEventListener('pointerdown', (e) => {
+  const caja = e.target.closest('.chart-box');
+  if (caja) moverGrafica(caja, e.clientX);
+});
+appEl.addEventListener('pointerleave', (e) => {
+  const caja = e.target.closest('.chart-box');
+  if (caja) soltarGrafica(caja);
+}, true);
+appEl.addEventListener('pointerup', (e) => {
+  const caja = e.target.closest('.chart-box');
+  if (caja) soltarGrafica(caja);
+});
+/* al plegar la tarjeta, que no se quede el cursor colgado */
+appEl.addEventListener('pointercancel', (e) => {
+  const caja = e.target.closest('.chart-box');
+  if (caja) soltarGrafica(caja);
+});
+
+/* cambiar con quién se compara */
+document.querySelector('.app').addEventListener('change', (e) => {
+  const sel = e.target.closest('[data-cmp-sel]');
+  if (!sel) return;
+  const id = sel.dataset.cmpSel;
+  const entra = (DATA.market || []).find(x => String(x.id) === String(id));
+  const sale = (DATA.squad || []).find(x => String(x.id) === String(sel.value));
+  const caja = document.querySelector('[data-cmp-out="' + id + '"]');
+  if (entra && sale && caja) caja.innerHTML = comparacion(entra, sale);
+});
+
+/* el selector no debe plegar la tarjeta */
+document.querySelector('.app').addEventListener('click', (e) => {
+  if (e.target.closest('.cmp')) e.stopPropagation();
+}, true);
+
+/* marcar venta simulada */
+document.querySelector('.app').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-vender]');
+  if (!b) return;
+  e.stopPropagation();
+  const id = Number(b.dataset.vender);
+  sim.vendidos = sim.vendidos.includes(id)
+    ? sim.vendidos.filter(x => x !== id)
+    : sim.vendidos.concat(id);
+  guardarSim(); render();
+});
+
+/* desplegar tarjeta */
+document.querySelector('.app').addEventListener('click', (e) => {
+  if (e.target.closest('[data-vender]')) return;
+  const row = e.target.closest('.row');
+  if (!row) return;
+  row.parentElement.classList.toggle('open');
+});
+
+/* ---- ajustes: guardados en este navegador ---------------------------- */
+const LS_URL = 'bwm_url', LS_JSON = 'bwm_json';
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch { return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch {} },
+  del(k){ try { localStorage.removeItem(k); } catch {} },
+};
+
+let source = 'simulados';
+
+/* ---- simulación de operaciones ----------------------------------------
+   Los datos vienen del snapshot de madrugada. El saldo es lo único que se
+   desfasa durante el día, porque cambia en cuanto compras o vendes. Esto
+   deja recalcularlo en local, sin tocar la red.                          */
+const LS_SIM = 'bwm_sim';
+let sim = { ajuste: 0, vendidos: [] };
+try {
+  const raw = store.get(LS_SIM);
+  if (raw) sim = JSON.parse(raw);
+} catch {}
+function guardarSim(){ try { store.set(LS_SIM, JSON.stringify(sim)); } catch {} }
+
+/** Porcentaje de valor de plantilla que tu liga deja endeudarse. */
+function pctDeuda(modo){
+  return modo === 'saldo' ? 0 : modo === 'saldo50' ? 0.5 : modo === 'ilimitada' ? null : 0.25;
+}
+
+/**
+ * Recalcula la economía aplicando las ventas simuladas. Vender suma su precio
+ * al saldo PERO resta ese jugador de la plantilla, así que el margen de deuda
+ * baja. El efecto neto de una venta es menor que su precio.
+ */
+function economiaAjustada(){
+  const e = DATA.economia;
+  if (!e) return null;
+
+  const vendidos = (DATA.squad || []).filter(p => sim.vendidos.includes(p.id));
+  const ingreso = vendidos.reduce((s, p) => s + p.price, 0);
+
+  const saldo = e.saldo + ingreso + (sim.ajuste || 0);
+  const valorPlantilla = e.valorPlantilla - ingreso;
+  const pct = pctDeuda(e.modo);
+  const margen = pct === null ? null : valorPlantilla * pct;
+  const limite = margen === null ? Infinity : saldo + margen;
+
+  const exposicion = (DATA.market || [])
+    .filter(m => m.action === 'buy' && m.suggestedBid)
+    .reduce((s, m) => s + m.suggestedBid, 0);
+
+  const avisos = [];
+  const eu = (n) => eur(n) + '€';
+  if (saldo < 0) avisos.push('Estás en negativo (' + eu(saldo) + '). Vende antes de la jornada.');
+  if (exposicion > 0 && exposicion > limite) {
+    avisos.push('Las pujas recomendadas suman ' + eu(exposicion) +
+      ' y tu límite es ' + eu(limite) + '. No te caben todas.');
+  } else if (exposicion > 0 && exposicion > saldo) {
+    avisos.push('Si ganas todas las pujas te quedas en negativo (' + eu(exposicion - saldo) +
+      '). Cabe dentro del límite, pero cierra en positivo antes de la jornada o tu equipo no puntúa.');
+  }
+
+  return { saldo, valorPlantilla, margen, limite, exposicion, avisos,
+           modo: e.modo, tocado: ingreso !== 0 || (sim.ajuste || 0) !== 0 };
+}
+
+function setStatus(msg){ document.getElementById('s-status').textContent = msg; }
+
+/* selector de usuario */
+document.getElementById('s-users').innerHTML = USUARIOS.map(u =>
+  '<button class="btn' + (u === usuarioActual() ? ' primary' : '') + '" data-u="' + u + '">' +
+  u.charAt(0).toUpperCase() + u.slice(1) + '</button>').join('');
+
+document.getElementById('s-users').addEventListener('click', async (ev) => {
+  const b = ev.target.closest('[data-u]');
+  if (!b) return;
+  store.set('bwm_user', b.dataset.u);
+  store.del(LS_URL); store.del(LS_JSON);
+  // El ajuste de saldo es de cada una, así que se reinicia al cambiar.
+  sim = { ajuste: 0, vendidos: [] }; guardarSim();
+  setStatus('Cargando datos de ' + b.dataset.u + '…');
+  try {
+    const res = await fetch('./market-' + b.dataset.u + '.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error('no encontrado');
+    const parsed = await res.json();
+    if (!parsed.market || !parsed.squad) throw new Error('JSON incompleto');
+    DATA = parsed; source = b.dataset.u;
+    render(); setStatus('Cargado: ' + b.dataset.u);
+  } catch (e) {
+    setStatus('No hay datos de ' + b.dataset.u + ' todavía (' + e.message + ')');
+  }
+  document.getElementById('s-users').innerHTML = USUARIOS.map(u =>
+    '<button class="btn' + (u === b.dataset.u ? ' primary' : '') + '" data-u="' + u + '">' +
+    u.charAt(0).toUpperCase() + u.slice(1) + '</button>').join('');
+});
+
+document.getElementById('gear').addEventListener('click', () => {
+  const s = document.getElementById('settings');
+  const open = s.classList.contains('hidden');
+  s.classList.toggle('hidden', !open);
+  for (const v of ['market','squad','xi']) document.getElementById('v-' + v).classList.toggle('hidden', open);
+  document.querySelector('.tabs').classList.toggle('hidden', open);
+  if (open){
+    document.getElementById('s-url').value = store.get(LS_URL) || '';
+    setStatus('Fuente actual: ' + source);
+  }
+  window.scrollTo(0,0);
+});
+
+document.getElementById('s-save').addEventListener('click', async () => {
+  const url = document.getElementById('s-url').value.trim();
+  const raw = document.getElementById('s-json').value.trim();
+
+  if (raw){
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed.market || !parsed.squad) throw new Error('faltan market o squad');
+      store.set(LS_JSON, raw); store.del(LS_URL);
+      DATA = parsed; source = 'JSON pegado';
+      render(); setStatus('Cargado. ' + parsed.market.length + ' jugadores en mercado.');
+    } catch (e){ setStatus('JSON no válido: ' + e.message); }
+    return;
+  }
+
+  if (url){
+    if (!/^https:/i.test(url)){ setStatus('Tiene que empezar por https://'); return; }
+    setStatus('Cargando…');
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error('respuesta ' + res.status);
+      const parsed = await res.json();
+      if (!parsed.market || !parsed.squad) throw new Error('el JSON no tiene market y squad');
+      store.set(LS_URL, url); store.del(LS_JSON);
+      DATA = parsed; source = 'tu liga';
+      render(); setStatus('Cargado. Liga del ' + (parsed.date || '?') + '.');
+    } catch (e){ setStatus('No se pudo cargar: ' + e.message); }
+    return;
+  }
+
+  setStatus('Pon una URL o pega el JSON.');
+});
+
+document.getElementById('s-reset').addEventListener('click', () => {
+  store.del(LS_URL); store.del(LS_JSON);
+  DATA = EMBEDDED; source = 'simulados';
+  document.getElementById('s-url').value = '';
+  document.getElementById('s-json').value = '';
+  render(); setStatus('Vuelto a los datos simulados.');
+});
+
+/* ---- carga inicial ---------------------------------------------------- */
+async function boot(){
+  const savedJson = store.get(LS_JSON);
+  const savedUrl = store.get(LS_URL) || DATA_URL;
+
+  if (savedJson){
+    try { DATA = JSON.parse(savedJson); source = 'JSON pegado'; } catch {}
+  } else if (savedUrl){
+    try {
+      const res = await fetch(savedUrl, { cache: 'no-store' });
+      if (res.ok){
+        const parsed = await res.json();
+        if (parsed.market && parsed.squad){ DATA = parsed; source = usuarioActual(); }
+      }
+    } catch (err){
+      console.error('No se pudo cargar ' + savedUrl + ', uso los simulados', err);
+    }
+  }
+  render();
+}
+boot();
+</script>
+</body>
+</html>

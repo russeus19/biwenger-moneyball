@@ -1,0 +1,46 @@
+name: Fase 0 - ver los datos
+
+# Se lanza a mano desde la pestaña Actions. Sirve para confirmar que el login
+# funciona y para ver la forma real de las respuestas de Biwenger antes de
+# ajustar el adaptador.
+on:
+  workflow_dispatch:
+
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Conectar y descargar
+        env:
+          BIWENGER_EMAIL: ${{ secrets.DANI_EMAIL }}
+          BIWENGER_PASSWORD: ${{ secrets.DANI_PASSWORD }}
+          BIWENGER_LEAGUE: ${{ secrets.BIWENGER_LEAGUE }}
+        run: npm run inspect
+
+      # Lo imprime en el log para poder leerlo desde el movil, sin descargar nada.
+      - name: Mostrar el resumen
+        if: always()
+        run: |
+          echo "=============================================="
+          echo "  COPIA DESDE AQUI"
+          echo "=============================================="
+          cat data/raw/_summary.json || echo "No se genero el resumen"
+          echo "=============================================="
+          echo "  HASTA AQUI"
+          echo "=============================================="
+
+      # Y tambien como descarga, por si hace falta el detalle completo.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: datos-crudos
+          path: data/raw/
