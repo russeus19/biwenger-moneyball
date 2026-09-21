@@ -45,6 +45,10 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font
 .sim{display:inline-block;font-size:.62rem;text-transform:uppercase;letter-spacing:.07em;
   background:var(--mid-bg);color:var(--mid);padding:2px 7px;border-radius:999px;font-weight:700;margin-left:6px;vertical-align:2px}
 .meta{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:.75rem;color:var(--muted)}
+.refrescar{width:100%;margin-top:8px;border:1px solid var(--line);background:var(--card);
+  color:var(--ink);font:inherit;font-size:.82rem;font-weight:600;padding:10px;border-radius:10px;cursor:pointer}
+.refrescar:disabled{opacity:.6;cursor:default}
+.refrescar.trabajando{background:var(--mid-bg);color:var(--mid);border-color:var(--mid-bg)}
 .frescura{display:block;font-size:.72rem;margin-top:8px;padding:7px 10px;border-radius:9px;line-height:1.4}
 .f-ok{background:var(--good-bg);color:var(--good)}
 .f-viejo{background:var(--mid-bg);color:var(--mid)}
@@ -302,6 +306,7 @@ footer{margin-top:22px;font-size:.7rem;color:var(--faint);line-height:1.5;paddin
       <span>J<b id="m-round">—</b></span>
     </div>
     <div id="frescura"></div>
+    <button class="refrescar" id="refrescar">Actualizar ahora</button>
   </div>
 
   <div class="tabs" role="tablist">
@@ -6448,6 +6453,82 @@ document.getElementById('s-reset').addEventListener('click', () => {
   document.getElementById('s-url').value = '';
   document.getElementById('s-json').value = '';
   render(); setStatus('Vuelto a los datos simulados.');
+});
+
+/* ---- botón de actualizar --------------------------------------------
+   La web es estática: el botón le pide a una función de Vercel que lance el
+   análisis en GitHub. Tarda unos tres minutos entre que corre el workflow y
+   Vercel republica, así que después se queda comprobando sola hasta que
+   aparecen los datos nuevos.                                             */
+const btnRefrescar = document.getElementById('refrescar');
+let comprobando = null;
+
+function sello(){ return DATA && DATA.generatedAt ? DATA.generatedAt : ''; }
+
+async function traerDatos(){
+  const url = (store.get(LS_URL) || DATA_URL) + '?t=' + Date.now();
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(String(res.status));
+  const parsed = await res.json();
+  if (!parsed.market || !parsed.squad) throw new Error('JSON incompleto');
+  return parsed;
+}
+
+btnRefrescar.addEventListener('click', async () => {
+  if (comprobando) return;
+  const selloViejo = sello();
+
+  btnRefrescar.disabled = true;
+  btnRefrescar.classList.add('trabajando');
+  btnRefrescar.textContent = 'Lanzando el análisis…';
+
+  try {
+    const res = await fetch('/api/refresh', { method: 'POST' });
+    const cuerpo = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(cuerpo.ayuda || cuerpo.error || ('error ' + res.status));
+  } catch (err) {
+    btnRefrescar.classList.remove('trabajando');
+    btnRefrescar.disabled = false;
+    btnRefrescar.textContent = 'Actualizar ahora';
+    document.getElementById('frescura').className = 'frescura f-rancio';
+    document.getElementById('frescura').textContent = 'No pude lanzarlo: ' + err.message;
+    return;
+  }
+
+  // A esperar. El análisis tarda unos dos minutos y Vercel otro tanto en
+  // republicar, así que se comprueba cada quince segundos durante seis.
+  const arranque = Date.now();
+  let vueltas = 0;
+  comprobando = setInterval(async () => {
+    vueltas++;
+    const min = Math.floor((Date.now() - arranque) / 60000);
+    const seg = Math.floor(((Date.now() - arranque) % 60000) / 1000);
+    btnRefrescar.textContent = 'Analizando… ' + min + ':' + String(seg).padStart(2, '0');
+
+    try {
+      const nuevo = await traerDatos();
+      if (nuevo.generatedAt && nuevo.generatedAt !== selloViejo) {
+        clearInterval(comprobando); comprobando = null;
+        DATA = nuevo;
+        sim = { ajuste: 0, vendidos: [] }; guardarSim();
+        render();
+        btnRefrescar.classList.remove('trabajando');
+        btnRefrescar.disabled = false;
+        btnRefrescar.textContent = 'Actualizar ahora';
+        return;
+      }
+    } catch {}
+
+    if (vueltas > 24) {
+      clearInterval(comprobando); comprobando = null;
+      btnRefrescar.classList.remove('trabajando');
+      btnRefrescar.disabled = false;
+      btnRefrescar.textContent = 'Actualizar ahora';
+      document.getElementById('frescura').className = 'frescura f-viejo';
+      document.getElementById('frescura').textContent =
+        'El análisis se lanzó pero tarda más de lo normal. Recarga en un rato.';
+    }
+  }, 15000);
 });
 
 /* ---- carga inicial ---------------------------------------------------- */

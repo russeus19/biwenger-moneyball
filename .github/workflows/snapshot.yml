@@ -15,16 +15,14 @@ name: Snapshot diario
 # Todo lo demás se ordena alrededor de ese momento.
 on:
   schedule:
-    - cron: '0 23 * * *'      # 01:00 · primera hora
-    - cron: '35 1 * * *'      # 03:35 · madrugada
-    - cron: '35 4 * * *'      # 06:35 · antes del cierre de subastas
-    - cron: '35 5 * * *'      # 07:35 · TRAS los traspasos: mercado y plantilla nuevos
-    - cron: '35 6 * * *'      # 08:35 · segunda pasada tras los traspasos
-    - cron: '35 7 * * *'      # 09:35 · media mañana
-    - cron: '47 9 * * *'      # 11:47 · mediodía
-    - cron: '47 17 * * *'     # 19:47 · tarde
-    - cron: '47 20 * * *'     # 22:47 · noche
-    - cron: '57 21 * * *'     # 23:57 · tras las jornadas
+    # Con el botón de la app, los pases automáticos son solo una red de
+    # seguridad: dejan datos razonables aunque no entres a pedirlos.
+    #
+    # Los horarios de GitHub en el plan gratuito no son puntuales: se retrasan
+    # y a veces se saltan. Por eso el botón es lo principal y esto el respaldo.
+    - cron: '35 5 * * *'   # 07:35 · tras los traspasos, el estado del día
+    - cron: '47 17 * * *'  # 19:47 · tarde
+    - cron: '57 21 * * *'  # 23:57 · tras las jornadas
   workflow_dispatch:
 
 permissions:
